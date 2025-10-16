@@ -169,14 +169,33 @@
     flex-grow: 1;
     overflow-y: auto;
     padding: 20px;
-    
-    /* --- 請在這裡加入以下設定 --- */
+    position: relative; /* 新增：為了定位偽元素 */
+    overflow: hidden; /* 新增：確保模糊的邊緣不會超出範圍 */
+}
+
+        /* --- 新增：用於放置模糊背景的偽元素 --- */
+.chat-messages::before {
+    content: ''; /* 偽元素必需的屬性 */
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: -1; /* 將這個偽元素放到內容的後面 */
+
+    /* --- 將原本的背景設定移到這裡 --- */
     background-image: url('對話背景圖片.png');
     background-size: cover;
     background-position: center center;
-    background-attachment: fixed; /* 讓背景固定，只有訊息在捲動 */
-}
+    background-attachment: fixed;
 
+    /* --- 核心：加上模糊效果 --- */
+    filter: blur(5px); /* 你可以調整 5px 這個數值來改變模糊程度 */
+    
+    /* 可選：稍微放大背景，避免因模糊而產生白邊 */
+    transform: scale(1.05); 
+}
+        
         .message-group {
             margin-bottom: 15px;
             display: flex;
