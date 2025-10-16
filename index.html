@@ -169,13 +169,15 @@
 
 /* 1. 修改 .chat-messages 本身 */
 /* 1. 修改 .chat-messages 容器本身 */
+/* 1. 修改 .chat-messages 容器本身 */
 .chat-messages {
     flex-grow: 1;
     overflow-y: auto;
-    padding: 20px;
-    position: relative;         /* 這是讓內部 ::before 偽元素定位的關鍵 */
-    background-color: transparent; /* 容器本身必須是透明的，才能看到背景層 */
-    z-index: 0;                 /* 建立一個基本的堆疊層級 */
+    /* 將 padding-bottom 減少，以消除底部的空白邊 */
+    padding: 20px 20px 10px 20px; /* 分別對應：上 右 下 左 */
+    position: relative;        
+    background-color: transparent;
+    z-index: 0;                
 }
 
 /* 2. 使用 ::before 偽元素來當作背景層，並加上調暗效果 */
