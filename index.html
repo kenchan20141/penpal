@@ -168,34 +168,42 @@
    /* --- 請用下面的程式碼，取代您原本的 .chat-messages 樣式 --- */
 
 /* 1. 修改 .chat-messages 本身 */
+/* 1. 修改 .chat-messages 容器本身 */
 .chat-messages {
     flex-grow: 1;
     overflow-y: auto;
     padding: 20px;
-    position: relative;         /* 這是讓內部背景層定位的關鍵 */
-    background-color: transparent; /* 確保它自己是透明的 */
-    z-index: 0;                 /* 建立一個堆疊層級 */
+    position: relative;         /* 這是讓內部 ::before 偽元素定位的關鍵 */
+    background-color: transparent; /* 容器本身必須是透明的，才能看到背景層 */
+    z-index: 0;                 /* 建立一個基本的堆疊層級 */
 }
 
-/* 2. 新增我們剛才加入的 .chat-background 的樣式 */
-.chat-background {
-    content: '';
-    position: absolute;         /* 絕對定位，相對於 .chat-messages */
+/* 2. 使用 ::before 偽元素來當作背景層，並加上調暗效果 */
+.chat-messages::before {
+    content: ''; /* 偽元素必須要有 content 屬性 */
+    position: absolute; /* 相對於 .chat-messages 絕對定位 */
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
     
+    /* 將背景圖片設定在這裡 */
     background-image: url('背景圖片.png');
     background-size: cover;
     background-position: center center;
-    background-attachment: fixed; /* 背景固定，效果更好 */
+    background-attachment: fixed; /* 背景固定，滾動內容時效果更好 */
+    
+    /* --- 關鍵：調暗背景的技巧 --- */
+    /* 我們使用 filter: brightness() 來降低亮度。
+       50% 代表亮度只有原來的一半，您可以調整 0% (全黑) 到 100% (原樣) 之間的數值。
+       例如：brightness(0.4) 或 brightness(60%)。
+    */
     filter: brightness(50%);
     
-    opacity: 0.2;               /* <<-- 在這裡直接設定您要的透明度 */
-    
-    z-index: -1;                /* 把它放到內容的後面 */
+    /* 把它移到內容的後面，確保聊天訊息能顯示在它之上 */
+    z-index: -1; 
 }
+
 
 /* 2. 建立一個偽元素來當作背景層 */
 .chat-messages::before {
@@ -360,7 +368,7 @@
                 <a id="logout-button">登出</a>
             </header>
            <div id="chat-messages" class="chat-messages">
-    <div class="chat-background"></div> <!-- <<-- 請加入這一行 -->
+
     <!-- 訊息將會動態加載於此 -->
 </div>
             <form id="message-form" class="chat-input">
