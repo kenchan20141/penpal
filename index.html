@@ -165,12 +165,35 @@
             cursor: pointer;
         }
 
-     .chat-messages {
+   /* --- 請用下面的程式碼，取代您原本的 .chat-messages 樣式 --- */
+
+/* 1. 修改 .chat-messages 本身 */
+.chat-messages {
     flex-grow: 1;
     overflow-y: auto;
     padding: 20px;
-    position: relative; /* 1. 建立定位基準 */
-    z-index: 0; /* 確保內容在偽元素之上 */
+    position: relative;         /* 這是讓內部背景層定位的關鍵 */
+    background-color: transparent; /* 確保它自己是透明的 */
+    z-index: 0;                 /* 建立一個堆疊層級 */
+}
+
+/* 2. 新增我們剛才加入的 .chat-background 的樣式 */
+.chat-background {
+    content: '';
+    position: absolute;         /* 絕對定位，相對於 .chat-messages */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    
+    background-image: url('背景圖片.png');
+    background-size: cover;
+    background-position: center center;
+    background-attachment: fixed; /* 背景固定，效果更好 */
+    
+    opacity: 0.4;               /* <<-- 在這裡直接設定您要的透明度 */
+    
+    z-index: -1;                /* 把它放到內容的後面 */
 }
 
 /* 2. 建立一個偽元素來當作背景層 */
@@ -335,9 +358,10 @@
                 <h2>交流空間</h2>
                 <a id="logout-button">登出</a>
             </header>
-            <div id="chat-messages" class="chat-messages">
-                <!-- 訊息將會動態加載於此 -->
-            </div>
+           <div id="chat-messages" class="chat-messages">
+    <div class="chat-background"></div> <!-- <<-- 請加入這一行 -->
+    <!-- 訊息將會動態加載於此 -->
+</div>
             <form id="message-form" class="chat-input">
                 <input type="text" id="message-input" class="input-field" placeholder="分享你的閱讀心得..." autocomplete="off">
                 <button type="submit" id="send-button" title="傳送">
