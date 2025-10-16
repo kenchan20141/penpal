@@ -166,16 +166,16 @@
         }
 
        .chat-messages {
-    flex-grow: 1;
-    overflow-y: auto;
-    padding: 20px;
-    
-    /* --- 請在這裡加入以下設定 --- */
-    background-image: url('對話背景圖片.png');
-    background-size: cover;
-    background-position: center center;
-    background-attachment: fixed; /* 讓背景固定，只有訊息在捲動 */
-}
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 20px;
+            
+            /* --- 請在這裡加入以下設定 --- */
+            background-image: url('對話背景圖片.png');
+            background-size: cover;
+            background-position: center center;
+            background-attachment: fixed; /* 讓背景固定，只有訊息在捲動 */
+        }
 
         .message-group {
             margin-bottom: 15px;
@@ -192,15 +192,15 @@
         }
 
       .message {
-    max-width: 85%;
-    padding: 10px 15px;
-    border-radius: 12px;
-    /* 將原本的 background-color: var(--message-bg-color); 修改或替換為以下這行 */
-    background-color: rgba(236, 239, 241, 0.9); /* 帶有90%不透明度的淺灰色 */
-    word-wrap: break-word;
-    line-height: 1.5;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.1); /* 可選：增加細微陰影以提升立體感 */
-}
+            max-width: 85%;
+            padding: 10px 15px;
+            border-radius: 12px;
+            /* 將原本的 background-color: var(--message-bg-color); 修改或替換為以下這行 */
+            background-color: rgba(236, 239, 241, 0.9); /* 帶有90%不透明度的淺灰色 */
+            word-wrap: break-word;
+            line-height: 1.5;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1); /* 可選：增加細微陰影以提升立體感 */
+        }
         
         .message .timestamp {
             font-size: 11px;
@@ -437,6 +437,8 @@
                     const message = snapshot.val();
                     if(message) {
                          displayMessage(message);
+                         // 【通知功能新增】收到新訊息時，呼叫通知函數
+                         showNotification(message);
                     }
                 });
             }
@@ -468,6 +470,44 @@
                 messageInput.value = '';
             }
         }
+        
+        // 【通知功能新增】請求瀏覽器通知權限的函數
+        function requestNotificationPermission() {
+            // 檢查瀏覽器是否支援 Notification API
+            if ('Notification' in window) {
+                // 如果權限不是 'granted' (已允許) 也不是 'denied' (已拒絕)，則發出請求
+                if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+                    Notification.requestPermission().then(permission => {
+                        if (permission === 'granted') {
+                            console.log('桌面通知權限已成功獲取！');
+                        }
+                    });
+                }
+            }
+        }
+        
+        // 【通知功能新增】顯示桌面通知的函數
+        function showNotification({ name, text, userId }) {
+            // 檢查權限是否為 'granted' (已允許)
+            // 檢查發送者不是目前使用者自己
+            // 檢查頁面是否處於背景狀態 (使用者正在看別的分頁或視窗)
+            if (Notification.permission === 'granted' && userId !== currentUserId && document.hidden) {
+                const notificationTitle = `來自 ${name} 的新訊息`;
+                const notificationOptions = {
+                    body: text,
+                    // 您可以更換為一個自己的 Logo 或圖示 URL
+                    icon: 'https://www.gstatic.com/images/branding/product/1x/firebase_48dp.png' 
+                };
+
+                const notification = new Notification(notificationTitle, notificationOptions);
+
+                // 設定點擊通知時，自動切換回此聊天室分頁
+                notification.onclick = () => {
+                    window.focus();
+                };
+            }
+        }
+
 
         // 6. 進入聊天室的核心功能（包含用戶名稱驗證）
         function joinChat(userName, password) {
@@ -508,6 +548,10 @@
 
                     loginScreen.style.display = 'none';
                     chatScreen.style.display = 'flex';
+                    
+                    // 【通知功能新增】登入成功後，立即請求通知權限
+                    requestNotificationPermission();
+                    
                     listenForMessages();
                     messageInput.focus();
                 }
