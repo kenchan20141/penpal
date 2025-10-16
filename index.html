@@ -388,7 +388,6 @@
         <div id="login-screen">
             <h1>創作社筆友交流</h1>
            
-            <!-- (新功能) 聊天室群組清單 -->
             <div id="room-list-container">
                 <h2>我的交流群組</h2>
                 <ul id="room-list">
@@ -413,7 +412,6 @@
             <header class="chat-header">
                 <div class="title-group">
                     <h2 id="chat-room-name">交流空間</h2>
-                    <!-- (新功能) 修改名稱按鈕 -->
                     <button id="edit-room-name-button" title="修訂群組名稱">✏️</button>
                 </div>
                 <a id="logout-button">登出</a>
@@ -431,6 +429,7 @@
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
     
     <script>
         // --- Firebase 配置 ---
@@ -469,7 +468,8 @@
         let currentUserName = null;
         let currentUserId = null;
         let messagesRef = null;
-        let savedRooms = []; // (新功能) 用於儲存聊天室清單
+        let savedRooms = []; 
+        let globalListeners = {}; // (新) 用於管理全域通知監聽器
 
         const USER_COLORS = ['#e57373', '#ba68c8', '#7986cb', '#4fc3f7', '#4db6ac', '#aed581', '#ffb74d', '#ff8a65', '#90a4ae', '#a1887f'];
         
@@ -479,7 +479,7 @@
             return USER_COLORS[Math.abs(hash % USER_COLORS.length)];
         }
 
-        // --- (新功能) 群組清單管理 ---
+        // --- 群組清單管理 ---
         function saveRoomsToStorage() {
             localStorage.setItem('penpal-rooms', JSON.stringify(savedRooms));
         }
@@ -504,7 +504,6 @@
                 nameSpan.textContent = room.name;
                 li.appendChild(nameSpan);
                 
-                // 點擊列表項目直接加入
                 li.addEventListener('click', () => {
                     roomPasswordInput.value = room.id;
                     handleLoginAttempt();
@@ -515,11 +514,12 @@
                 deleteBtn.textContent = '×';
                 deleteBtn.title = '從列表中移除';
                 deleteBtn.addEventListener('click', (e) => {
-                    e.stopPropagation(); // 防止觸發 li 的點擊事件
+                    e.stopPropagation();
                     if (confirm(`確定要從列表中移除「${room.name}」嗎？`)) {
                         savedRooms = savedRooms.filter(r => r.id !== room.id);
                         saveRoomsToStorage();
                         renderRoomList();
+                        listenToAllSavedRoomsForNotifications(); // (新) 移除後重新整理全域監聽
                     }
                 });
                 li.appendChild(deleteBtn);
@@ -536,7 +536,8 @@
                 savedRooms.push({ id: roomId, name: roomName });
             }
             saveRoomsToStorage();
-            renderRoomList(); // 更新登入畫面的列表
+            renderRoomList();
+            listenToAllSavedRoomsForNotifications(); // (新) 新增或更新後重新整理全域監聽
         }
 
         function handleEditRoomName() {
@@ -545,14 +546,12 @@
 
             const newName = prompt("請為此交流群組輸入新名稱：", currentRoom.name);
             if (newName && newName.trim() !== '') {
-                currentRoom.name = newName.trim();
-                chatHeaderName.textContent = newName.trim();
-                saveRoomsToStorage();
-                // 登出後列表會自動更新，無需在這裡重新渲染
+                const trimmedName = newName.trim();
+                chatHeaderName.textContent = trimmedName;
+                addOrUpdateRoom(currentRoomId, trimmedName);
             }
         }
-        // --- (新功能) 功能結束 ---
-
+        
         function getUserId() {
             let userId = localStorage.getItem('penpal-userId');
             if (!userId) {
@@ -595,7 +594,7 @@
                     const message = snapshot.val();
                     if(message) {
                          displayMessage(message);
-                         showNotification(message);
+                         showChatNotification(message); // 改為呼叫聊天室內的通知
                     }
                 });
             }
@@ -622,15 +621,19 @@
             }
         }
         
+        // --- (新) 通知系統 ---
         function requestNotificationPermission() {
             if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
                 Notification.requestPermission().then(permission => {
-                    if (permission === 'granted') console.log('桌面通知權限已成功獲取！');
+                    if (permission === 'granted') {
+                        console.log('桌面通知權限已成功獲取！');
+                    }
                 });
             }
         }
         
-        function showNotification({ name, text, userId }) {
+        // (新) 僅在聊天室內，且分頁非作用中時觸發
+        function showChatNotification({ name, text, userId }) {
             if (Notification.permission === 'granted' && userId !== currentUserId && document.hidden) {
                 const notification = new Notification(`來自 ${name} 的新訊息`, {
                     body: text,
@@ -638,6 +641,47 @@
                 });
                 notification.onclick = () => window.focus();
             }
+        }
+
+        // (新) 全域通知：不在聊天室時觸發
+        function showGlobalNotification(message, room) {
+             if (Notification.permission === 'granted' && message && message.userId !== currentUserId) {
+                const notification = new Notification(`交流群組「${room.name}」有新訊息`, {
+                    body: `${message.name}: ${message.text}`,
+                    icon: 'https://www.gstatic.com/images/branding/product/1x/firebase_48dp.png',
+                    tag: room.id // 使用房間ID作為標籤，防止同一房間的多條訊息產生過多通知
+                });
+                notification.onclick = () => {
+                    roomPasswordInput.value = room.id;
+                    window.focus();
+                };
+            }
+        }
+
+        // (新) 移除所有全域監聽器
+        function detachAllGlobalListeners() {
+            for (const roomId in globalListeners) {
+                const { ref, listener } = globalListeners[roomId];
+                ref.off('child_added', listener);
+            }
+            globalListeners = {};
+        }
+
+        // (新) 為所有已儲存的房間設定背景監聽
+        function listenToAllSavedRoomsForNotifications() {
+            detachAllGlobalListeners(); // 先清除舊的監聽
+            const now = Date.now();
+            savedRooms.forEach(room => {
+                const roomRef = database.ref('chatrooms/' + room.id);
+                // 只監聽比現在還要新的訊息，避免載入頁面時收到舊訊息通知
+                const listener = roomRef.orderByChild('timestamp').startAt(now).on('child_added', (snapshot) => {
+                    // 確保目前不在這個聊天室內才顯示全域通知
+                    if (room.id !== currentRoomId) {
+                        showGlobalNotification(snapshot.val(), room);
+                    }
+                });
+                globalListeners[room.id] = { ref: roomRef, listener: listener };
+            });
         }
 
         function joinChat(userName, password) {
@@ -668,20 +712,21 @@
                     
                     localStorage.setItem('penpal-userName', userName);
                     
-                    // (新功能) 自動儲存新房間並更新標題
                     const roomInfo = savedRooms.find(r => r.id === currentRoomId);
-                    if (roomInfo) {
-                        chatHeaderName.textContent = roomInfo.name;
-                    } else {
-                        const defaultName = currentRoomId; // 新房間預設名稱為密碼
-                        addOrUpdateRoom(currentRoomId, defaultName);
-                        chatHeaderName.textContent = defaultName;
-                    }
+                    const roomName = roomInfo ? roomInfo.name : currentRoomId;
+                    addOrUpdateRoom(currentRoomId, roomName);
+                    chatHeaderName.textContent = roomName;
 
                     loginScreen.style.display = 'none';
                     chatScreen.style.display = 'flex';
                     
-                    requestNotificationPermission();
+                    // (新) 進入聊天室後，停止對該聊天室的全域監聽，改由內部監聽處理
+                    if (globalListeners[currentRoomId]) {
+                        const { ref, listener } = globalListeners[currentRoomId];
+                        ref.off('child_added', listener);
+                        delete globalListeners[currentRoomId];
+                    }
+
                     listenForMessages();
                     messageInput.focus();
                 }
@@ -708,7 +753,6 @@
         function logout() {
             stopListeningForMessages();
             
-            // 不清除使用者名稱和群組列表，只清除當前房間狀態
             currentRoomId = null;
             messagesRef = null;
             
@@ -716,8 +760,9 @@
             loginScreen.style.display = 'flex';
             roomPasswordInput.value = '';
             errorMessage.textContent = '';
-
-            renderRoomList(); // 重新整理列表，以防名稱有變動
+            
+            renderRoomList();
+            listenToAllSavedRoomsForNotifications(); // (新) 登出後，重新啟動所有全域監聽
             roomPasswordInput.focus();
         }
 
@@ -730,6 +775,8 @@
             
             loadRoomsFromStorage();
             renderRoomList();
+            requestNotificationPermission(); // (新) 初始時就請求通知權限
+            listenToAllSavedRoomsForNotifications(); // (新) 初始時就開始全域監聽
             userNameInput.focus();
         }
 
