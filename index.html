@@ -17,6 +17,7 @@
             --font-family: 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
             --danger-color: #c95c58;
             --danger-color-hover: #b04b47;
+            --subtle-text-color: #777; /* 用於預覽文字 */
         }
 
         * {
@@ -79,10 +80,9 @@
             color: var(--text-color);
         }
         
-        /* --- (新功能) 聊天室群組清單 --- */
         #room-list-container {
             width: 100%;
-            max-width: 350px;
+            max-width: 380px; 
             margin-bottom: 25px;
             text-align: left;
         }
@@ -98,7 +98,7 @@
 
         #room-list {
             list-style-type: none;
-            max-height: 150px;
+            max-height: 200px;
             overflow-y: auto;
             border: 1px solid var(--border-color);
             border-radius: 4px;
@@ -108,7 +108,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 10px 12px;
+            padding: 12px 15px;
             cursor: pointer;
             transition: background-color 0.2s;
             border-bottom: 1px solid #f0f0f0;
@@ -121,31 +121,68 @@
         #room-list li:hover {
             background-color: #f9f9f9;
         }
-        
-        .room-name {
-            font-weight: 500;
-            color: #555;
+
+        /* --- (核心修改) 聊天室列表預覽樣式 --- */
+        .room-info {
+            display: flex;
+            flex-direction: column;
             flex-grow: 1;
+            overflow: hidden;
+            margin-right: 10px;
         }
 
+        .room-name {
+            font-weight: 600;
+            font-size: 17px; /* (新) 增大字體以突出顯示 */
+            color: #263238; /* (新) 採用更深的石墨黑色，增加視覺份量 */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 4px; /* (新) 增加與下方預覽的間距，形成主次分區 */
+        }
+
+        .last-message-preview {
+            font-size: 14px;
+            color: var(--subtle-text-color);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .last-message-sender {
+            font-weight: 600;
+            color: var(--primary-color); 
+        }
+        
+        .no-message-info {
+            font-style: italic;
+            font-size: 14px;
+            color: #999;
+        }
+        
         .delete-room-btn {
             background-color: var(--danger-color);
             color: white;
             border: none;
             border-radius: 50%;
-            width: 22px;
-            height: 22px;
-            font-size: 14px;
-            line-height: 22px;
+            width: 24px;
+            height: 24px;
+            font-size: 15px;
+            line-height: 24px;
             text-align: center;
             cursor: pointer;
-            opacity: 0.8;
+            opacity: 0; 
             transition: all 0.2s;
+            flex-shrink: 0; 
+        }
+        
+        #room-list li:hover .delete-room-btn {
+            opacity: 0.8;
         }
         
         .delete-room-btn:hover {
-            background-color: var(--danger-color-hover);
             opacity: 1;
+            background-color: var(--danger-color-hover);
         }
 
         #no-rooms-message {
@@ -153,6 +190,10 @@
             font-size: 14px;
             padding: 20px;
             text-align: center;
+            cursor: default;
+        }
+        #no-rooms-message:hover {
+            background-color: transparent;
         }
         
         .login-divider {
@@ -161,11 +202,9 @@
             color: #999;
         }
         
-        /* --- (新功能) 樣式結束 --- */
-
         .input-group {
             width: 100%;
-            max-width: 350px;
+            max-width: 380px;
             margin-bottom: 15px;
         }
 
@@ -195,7 +234,7 @@
             transition: background-color 0.3s;
             margin-top: 10px;
             width: 100%;
-            max-width: 350px;
+            max-width: 380px;
         }
 
         .btn:hover {
@@ -243,7 +282,6 @@
             color: var(--text-color);
         }
         
-        /* --- (新功能) 修改名稱按鈕 --- */
         #edit-room-name-button {
             background: none;
             border: none;
@@ -259,7 +297,6 @@
         #edit-room-name-button:hover {
             background-color: #e0e0e0;
         }
-        /* --- (新功能) 樣式結束 --- */
 
         #logout-button {
             font-size: 14px;
@@ -453,14 +490,12 @@
         const roomPasswordInput = document.getElementById('room-password');
         const enterChatButton = document.getElementById('enter-chat-button');
         const errorMessage = document.getElementById('error-message');
-        
         const logoutButton = document.getElementById('logout-button');
         const chatHeaderName = document.getElementById('chat-room-name');
         const editRoomNameButton = document.getElementById('edit-room-name-button');
         const chatMessages = document.getElementById('chat-messages');
         const messageForm = document.getElementById('message-form');
         const messageInput = document.getElementById('message-input');
-
         const roomList = document.getElementById('room-list');
         
         // --- 全局狀態 ---
@@ -469,7 +504,7 @@
         let currentUserId = null;
         let messagesRef = null;
         let savedRooms = []; 
-        let globalListeners = {}; // (新) 用於管理全域通知監聽器
+        let globalListeners = {};
 
         const USER_COLORS = ['#e57373', '#ba68c8', '#7986cb', '#4fc3f7', '#4db6ac', '#aed581', '#ffb74d', '#ff8a65', '#90a4ae', '#a1887f'];
         
@@ -481,7 +516,8 @@
 
         // --- 群組清單管理 ---
         function saveRoomsToStorage() {
-            localStorage.setItem('penpal-rooms', JSON.stringify(savedRooms));
+            const roomsToSave = savedRooms.map(({ id, name }) => ({ id, name }));
+            localStorage.setItem('penpal-rooms', JSON.stringify(roomsToSave));
         }
 
         function loadRoomsFromStorage() {
@@ -498,12 +534,38 @@
 
             savedRooms.forEach(room => {
                 const li = document.createElement('li');
+                li.setAttribute('data-room-id', room.id);
+
+                const roomInfoDiv = document.createElement('div');
+                roomInfoDiv.className = 'room-info';
                 
                 const nameSpan = document.createElement('span');
                 nameSpan.className = 'room-name';
                 nameSpan.textContent = room.name;
-                li.appendChild(nameSpan);
+                roomInfoDiv.appendChild(nameSpan);
+
+                const previewDiv = document.createElement('div');
+                if (room.lastMessageText) {
+                    previewDiv.className = 'last-message-preview';
+                    
+                    const senderSpan = document.createElement('span');
+                    senderSpan.className = 'last-message-sender';
+                    senderSpan.textContent = `${room.lastMessageSender}: `;
+                    
+                    const textSpan = document.createElement('span');
+                    textSpan.className = 'last-message-text';
+                    textSpan.textContent = room.lastMessageText;
+
+                    previewDiv.appendChild(senderSpan);
+                    previewDiv.appendChild(textSpan);
+                } else {
+                    previewDiv.className = 'no-message-info';
+                    previewDiv.textContent = '尚無訊息';
+                }
+                roomInfoDiv.appendChild(previewDiv);
                 
+                li.appendChild(roomInfoDiv);
+
                 li.addEventListener('click', () => {
                     roomPasswordInput.value = room.id;
                     handleLoginAttempt();
@@ -511,15 +573,15 @@
 
                 const deleteBtn = document.createElement('button');
                 deleteBtn.className = 'delete-room-btn';
-                deleteBtn.textContent = '×';
+                deleteBtn.innerHTML = '&times;';
                 deleteBtn.title = '從列表中移除';
                 deleteBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     if (confirm(`確定要從列表中移除「${room.name}」嗎？`)) {
+                        detachSingleGlobalListener(room.id);
                         savedRooms = savedRooms.filter(r => r.id !== room.id);
                         saveRoomsToStorage();
                         renderRoomList();
-                        listenToAllSavedRoomsForNotifications(); // (新) 移除後重新整理全域監聽
                     }
                 });
                 li.appendChild(deleteBtn);
@@ -527,17 +589,37 @@
                 roomList.appendChild(li);
             });
         }
+        
+        async function updateAndRenderRoomList() {
+            const fetchPromises = savedRooms.map(room => {
+                return database.ref('chatrooms/' + room.id).orderByKey().limitToLast(1).once('value').then(snapshot => {
+                    if (snapshot.exists()) {
+                        const [messageId] = Object.keys(snapshot.val());
+                        const message = snapshot.val()[messageId];
+                        room.lastMessageText = message.text;
+                        room.lastMessageSender = message.name;
+                    } else {
+                        room.lastMessageText = null;
+                        room.lastMessageSender = null;
+                    }
+                });
+            });
+            await Promise.all(fetchPromises);
+            renderRoomList();
+        }
+
 
         function addOrUpdateRoom(roomId, roomName) {
-            const existingRoom = savedRooms.find(r => r.id === roomId);
+            let existingRoom = savedRooms.find(r => r.id === roomId);
             if (existingRoom) {
                 existingRoom.name = roomName;
             } else {
-                savedRooms.push({ id: roomId, name: roomName });
+                existingRoom = { id: roomId, name: roomName };
+                savedRooms.push(existingRoom);
             }
             saveRoomsToStorage();
-            renderRoomList();
-            listenToAllSavedRoomsForNotifications(); // (新) 新增或更新後重新整理全域監聽
+            listenToSingleRoom(existingRoom);
+            updateAndRenderRoomList();
         }
 
         function handleEditRoomName() {
@@ -594,7 +676,7 @@
                     const message = snapshot.val();
                     if(message) {
                          displayMessage(message);
-                         showChatNotification(message); // 改為呼叫聊天室內的通知
+                         showChatNotification(message);
                     }
                 });
             }
@@ -621,18 +703,15 @@
             }
         }
         
-        // --- (新) 通知系統 ---
+        // --- 通知系統 ---
         function requestNotificationPermission() {
             if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
                 Notification.requestPermission().then(permission => {
-                    if (permission === 'granted') {
-                        console.log('桌面通知權限已成功獲取！');
-                    }
+                    if (permission === 'granted') console.log('桌面通知權限已成功獲取！');
                 });
             }
         }
         
-        // (新) 僅在聊天室內，且分頁非作用中時觸發
         function showChatNotification({ name, text, userId }) {
             if (Notification.permission === 'granted' && userId !== currentUserId && document.hidden) {
                 const notification = new Notification(`來自 ${name} 的新訊息`, {
@@ -643,13 +722,12 @@
             }
         }
 
-        // (新) 全域通知：不在聊天室時觸發
         function showGlobalNotification(message, room) {
              if (Notification.permission === 'granted' && message && message.userId !== currentUserId) {
                 const notification = new Notification(`交流群組「${room.name}」有新訊息`, {
                     body: `${message.name}: ${message.text}`,
                     icon: 'https://www.gstatic.com/images/branding/product/1x/firebase_48dp.png',
-                    tag: room.id // 使用房間ID作為標籤，防止同一房間的多條訊息產生過多通知
+                    tag: room.id
                 });
                 notification.onclick = () => {
                     roomPasswordInput.value = room.id;
@@ -658,30 +736,37 @@
             }
         }
 
-        // (新) 移除所有全域監聽器
-        function detachAllGlobalListeners() {
-            for (const roomId in globalListeners) {
+        function detachSingleGlobalListener(roomId) {
+             if (globalListeners[roomId]) {
                 const { ref, listener } = globalListeners[roomId];
                 ref.off('child_added', listener);
+                delete globalListeners[roomId];
             }
-            globalListeners = {};
         }
 
-        // (新) 為所有已儲存的房間設定背景監聽
-        function listenToAllSavedRoomsForNotifications() {
-            detachAllGlobalListeners(); // 先清除舊的監聽
+        function detachAllGlobalListeners() {
+            Object.keys(globalListeners).forEach(detachSingleGlobalListener);
+        }
+        
+        function listenToSingleRoom(room) {
+            detachSingleGlobalListener(room.id);
             const now = Date.now();
-            savedRooms.forEach(room => {
-                const roomRef = database.ref('chatrooms/' + room.id);
-                // 只監聽比現在還要新的訊息，避免載入頁面時收到舊訊息通知
-                const listener = roomRef.orderByChild('timestamp').startAt(now).on('child_added', (snapshot) => {
-                    // 確保目前不在這個聊天室內才顯示全域通知
-                    if (room.id !== currentRoomId) {
-                        showGlobalNotification(snapshot.val(), room);
-                    }
-                });
-                globalListeners[room.id] = { ref: roomRef, listener: listener };
+            const roomRef = database.ref('chatrooms/' + room.id);
+            const listener = roomRef.orderByChild('timestamp').startAt(now).on('child_added', (snapshot) => {
+                if (room.id !== currentRoomId) {
+                    const message = snapshot.val();
+                    showGlobalNotification(message, room);
+                    room.lastMessageText = message.text;
+                    room.lastMessageSender = message.name;
+                    renderRoomList(); 
+                }
             });
+            globalListeners[room.id] = { ref: roomRef, listener: listener };
+        }
+
+        function listenToAllSavedRoomsForNotifications() {
+            detachAllGlobalListeners();
+            savedRooms.forEach(listenToSingleRoom);
         }
 
         function joinChat(userName, password) {
@@ -720,12 +805,7 @@
                     loginScreen.style.display = 'none';
                     chatScreen.style.display = 'flex';
                     
-                    // (新) 進入聊天室後，停止對該聊天室的全域監聽，改由內部監聽處理
-                    if (globalListeners[currentRoomId]) {
-                        const { ref, listener } = globalListeners[currentRoomId];
-                        ref.off('child_added', listener);
-                        delete globalListeners[currentRoomId];
-                    }
+                    detachSingleGlobalListener(currentRoomId);
 
                     listenForMessages();
                     messageInput.focus();
@@ -739,13 +819,11 @@
 
             if (!userName) {
                 errorMessage.textContent = '您的稱呼不能為空。';
-                userNameInput.focus();
-                return;
+                userNameInput.focus(); return;
             }
             if (!password) {
                 errorMessage.textContent = '密碼不能為空。';
-                roomPasswordInput.focus();
-                return;
+                roomPasswordInput.focus(); return;
             }
             joinChat(userName, password);
         }
@@ -761,12 +839,12 @@
             roomPasswordInput.value = '';
             errorMessage.textContent = '';
             
-            renderRoomList();
-            listenToAllSavedRoomsForNotifications(); // (新) 登出後，重新啟動所有全域監聽
+            updateAndRenderRoomList();
+            listenToAllSavedRoomsForNotifications();
             roomPasswordInput.focus();
         }
 
-        function initializeApp() {
+        async function initializeApp() {
             currentUserId = getUserId();
             const storedUserName = localStorage.getItem('penpal-userName');
             if (storedUserName) {
@@ -774,9 +852,11 @@
             }
             
             loadRoomsFromStorage();
-            renderRoomList();
-            requestNotificationPermission(); // (新) 初始時就請求通知權限
-            listenToAllSavedRoomsForNotifications(); // (新) 初始時就開始全域監聽
+            await updateAndRenderRoomList();
+            
+            requestNotificationPermission();
+            listenToAllSavedRoomsForNotifications();
+            
             userNameInput.focus();
         }
 
