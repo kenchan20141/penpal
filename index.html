@@ -23,12 +23,19 @@
             padding: 0;
         }
 
-        html, body {
+             html, body {
             height: 100%;
             font-family: var(--font-family);
-            background-color: var(--background-color);
+            background-color: var(--background-color); /* 作為圖片載入前的備用背景色 */
             color: var(--text-color);
             line-height: 1.6;
+            
+            /* --- 新增的背景圖片設定 --- */
+            background-image: url('背景圖片.png');
+            background-size: cover;
+            background-position: center center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
         }
 
         body {
