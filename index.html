@@ -174,7 +174,7 @@
     z-index: 0;         /* 創建堆疊上下文 */
 }
 
-/* --- 請新增這個區塊 --- */
+/* --- 請用這段更新您原本的 ::before 區塊 --- */
 .chat-messages::before {
     content: '';
     position: absolute;
@@ -182,20 +182,19 @@
     left: 0;
     right: 0;
     bottom: 0;
-    z-index: -1; /* 將偽元素放在內容的後面 */
+    z-index: -1;
 
     background-image: url('對話背景圖片.png');
     background-size: cover;
     background-position: center center;
-    background-attachment: fixed;
     
-    /* --- 從以下濾鏡效果中選擇一種或組合使用 --- */
-
-    /* 效果A：模糊 (數字越大越模糊) */
+    /* 
+     * 移除了 background-attachment: fixed; 
+     * 這樣背景就會被正確地限制在對話框內，並跟隨內容滾動。
+     */
+    
+    /* 只保留您需要的模糊效果 */
     filter: blur(4px);
-
-    /* 效果B：調暗並變為黑白 (可自行組合) */
-    /* filter: grayscale(100%) brightness(50%); */
 }
 
         .message-group {
