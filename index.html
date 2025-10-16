@@ -15,6 +15,8 @@
             --input-bg-color: #fff;
             --message-bg-color: #eceff1; /* 訊息氣泡背景 */
             --font-family: 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
+            --danger-color: #c95c58;
+            --danger-color-hover: #b04b47;
         }
 
         * {
@@ -23,14 +25,12 @@
             padding: 0;
         }
 
-             html, body {
+        html, body {
             height: 100%;
             font-family: var(--font-family);
-            background-color: var(--background-color); /* 作為圖片載入前的備用背景色 */
+            background-color: var(--background-color);
             color: var(--text-color);
             line-height: 1.6;
-            
-            /* --- 新增的背景圖片設定 --- */
             background-image: url('背景圖片.png');
             background-size: cover;
             background-position: center center;
@@ -67,26 +67,105 @@
             justify-content: center;
             align-items: center;
             height: 100%;
-            padding: 40px;
+            padding: 20px 40px;
             text-align: center;
+            overflow-y: auto;
         }
 
         #login-screen h1 {
             font-size: 28px;
             font-weight: 500;
-            margin-bottom: 15px;
+            margin-bottom: 25px;
             color: var(--text-color);
         }
+        
+        /* --- (新功能) 聊天室群組清單 --- */
+        #room-list-container {
+            width: 100%;
+            max-width: 350px;
+            margin-bottom: 25px;
+            text-align: left;
+        }
 
-        #login-screen p {
-            margin-bottom: 30px;
-            color: #777;
-            max-width: 320px;
+        #room-list-container h2 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        #room-list {
+            list-style-type: none;
+            max-height: 150px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+        }
+
+        #room-list li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            border-bottom: 1px solid #f0f0f0;
         }
         
+        #room-list li:last-child {
+            border-bottom: none;
+        }
+
+        #room-list li:hover {
+            background-color: #f9f9f9;
+        }
+        
+        .room-name {
+            font-weight: 500;
+            color: #555;
+            flex-grow: 1;
+        }
+
+        .delete-room-btn {
+            background-color: var(--danger-color);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 22px;
+            height: 22px;
+            font-size: 14px;
+            line-height: 22px;
+            text-align: center;
+            cursor: pointer;
+            opacity: 0.8;
+            transition: all 0.2s;
+        }
+        
+        .delete-room-btn:hover {
+            background-color: var(--danger-color-hover);
+            opacity: 1;
+        }
+
+        #no-rooms-message {
+            color: #999;
+            font-size: 14px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .login-divider {
+            margin: 15px 0;
+            font-size: 14px;
+            color: #999;
+        }
+        
+        /* --- (新功能) 樣式結束 --- */
+
         .input-group {
             width: 100%;
-            max-width: 320px;
+            max-width: 350px;
             margin-bottom: 15px;
         }
 
@@ -116,7 +195,7 @@
             transition: background-color 0.3s;
             margin-top: 10px;
             width: 100%;
-            max-width: 320px;
+            max-width: 350px;
         }
 
         .btn:hover {
@@ -152,11 +231,35 @@
             flex-shrink: 0;
         }
 
-        .chat-header h2 {
+        .chat-header .title-group {
+             display: flex;
+             align-items: center;
+             gap: 10px;
+        }
+
+        #chat-room-name {
             font-size: 18px;
             font-weight: 500;
             color: var(--text-color);
         }
+        
+        /* --- (新功能) 修改名稱按鈕 --- */
+        #edit-room-name-button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+            padding: 5px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s;
+        }
+        #edit-room-name-button:hover {
+            background-color: #e0e0e0;
+        }
+        /* --- (新功能) 樣式結束 --- */
 
         #logout-button {
             font-size: 14px;
@@ -169,19 +272,17 @@
             flex-grow: 1;
             overflow-y: auto;
             padding: 20px;
-            
-            /* --- 請在這裡加入以下設定 --- */
             background-image: url('對話背景圖.png');
             background-size: cover;
             background-position: center center;
-            background-attachment: fixed; /* 讓背景固定，只有訊息在捲動 */
+            background-attachment: fixed;
         }
 
         .message-group {
             margin-bottom: 15px;
             display: flex;
             flex-direction: column;
-            align-items: flex-start; /* 預設靠左 */
+            align-items: flex-start;
         }
 
         .sender-name {
@@ -195,11 +296,10 @@
             max-width: 85%;
             padding: 10px 15px;
             border-radius: 12px;
-            /* 將原本的 background-color: var(--message-bg-color); 修改或替換為以下這行 */
-            background-color: rgba(236, 239, 241, 0.9); /* 帶有90%不透明度的淺灰色 */
+            background-color: rgba(236, 239, 241, 0.9);
             word-wrap: break-word;
             line-height: 1.5;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1); /* 可選：增加細微陰影以提升立體感 */
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
         }
         
         .message .timestamp {
@@ -211,26 +311,23 @@
             opacity: 0.7;
         }
 
-        /* --- 新增：己方訊息的樣式 --- */
         .message-group.own-message {
-            align-items: flex-end; /* 將整個訊息群組靠右 */
+            align-items: flex-end;
         }
 
         .message-group.own-message .sender-name {
-            display: none; /* 自己的訊息不用顯示自己的名字 */
+            display: none;
         }
 
         .message-group.own-message .message {
-            background-color: var(--primary-color); /* 使用主題顏色 */
-            color: #ffffff; /* 白色文字 */
+            background-color: var(--primary-color);
+            color: #ffffff;
         }
 
         .message-group.own-message .message .timestamp {
             color: #e0e0e0;
             opacity: 0.8;
         }
-        /* --- 樣式新增結束 --- */
-
 
         .chat-input {
             display: flex;
@@ -277,20 +374,10 @@
             fill: var(--primary-color);
         }
         
-        /* 響應式設計 */
         @media (max-width: 600px) {
-            body {
-                padding: 0;
-            }
-            .container {
-                height: 100vh;
-                max-height: 100vh;
-                border-radius: 0;
-                border: none;
-            }
-            #login-screen {
-                padding: 20px;
-            }
+            body { padding: 0; }
+            .container { height: 100vh; max-height: 100vh; border-radius: 0; border: none; }
+            #login-screen { padding: 20px; }
         }
     </style>
 </head>
@@ -301,6 +388,16 @@
         <div id="login-screen">
             <h1>創作社筆友交流</h1>
            
+            <!-- (新功能) 聊天室群組清單 -->
+            <div id="room-list-container">
+                <h2>我的交流群組</h2>
+                <ul id="room-list">
+                    <!-- Javascript 會動態填入這裡 -->
+                </ul>
+            </div>
+            
+            <div class="login-divider">或加入/建立新的群組</div>
+
             <div class="input-group">
                 <input type="text" id="user-name" class="input-field" placeholder="您的稱呼..." autocomplete="off">
             </div>
@@ -314,12 +411,14 @@
         <!-- 聊天室畫面 -->
         <div id="chat-screen">
             <header class="chat-header">
-                <h2>交流空間</h2>
+                <div class="title-group">
+                    <h2 id="chat-room-name">交流空間</h2>
+                    <!-- (新功能) 修改名稱按鈕 -->
+                    <button id="edit-room-name-button" title="修訂群組名稱">✏️</button>
+                </div>
                 <a id="logout-button">登出</a>
             </header>
-            <div id="chat-messages" class="chat-messages">
-                <!-- 訊息將會動態加載於此 -->
-            </div>
+            <div id="chat-messages" class="chat-messages"></div>
             <form id="message-form" class="chat-input">
                 <input type="text" id="message-input" class="input-field" placeholder="分享你的閱讀心得..." autocomplete="off">
                 <button type="submit" id="send-button" title="傳送">
@@ -345,7 +444,6 @@
             appId: "1:66478784623:web:9a5e3636b78e31280f0d9a"
         };
         
-        // --- 初始化 Firebase ---
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
@@ -358,34 +456,103 @@
         const errorMessage = document.getElementById('error-message');
         
         const logoutButton = document.getElementById('logout-button');
+        const chatHeaderName = document.getElementById('chat-room-name');
+        const editRoomNameButton = document.getElementById('edit-room-name-button');
         const chatMessages = document.getElementById('chat-messages');
         const messageForm = document.getElementById('message-form');
         const messageInput = document.getElementById('message-input');
+
+        const roomList = document.getElementById('room-list');
         
         // --- 全局狀態 ---
         let currentRoomId = null;
         let currentUserName = null;
         let currentUserId = null;
         let messagesRef = null;
+        let savedRooms = []; // (新功能) 用於儲存聊天室清單
 
-        // --- 為不同使用者產生穩定顏色的設定 ---
-        const USER_COLORS = [
-            '#e57373', '#ba68c8', '#7986cb', '#4fc3f7', '#4db6ac',
-            '#aed581', '#ffb74d', '#ff8a65', '#90a4ae', '#a1887f'
-        ];
+        const USER_COLORS = ['#e57373', '#ba68c8', '#7986cb', '#4fc3f7', '#4db6ac', '#aed581', '#ffb74d', '#ff8a65', '#90a4ae', '#a1887f'];
         
         function getColorForUserId(userId) {
             let hash = 0;
-            for (let i = 0; i < userId.length; i++) {
-                hash = userId.charCodeAt(i) + ((hash << 5) - hash);
-            }
-            const index = Math.abs(hash % USER_COLORS.length);
-            return USER_COLORS[index];
+            for (let i = 0; i < userId.length; i++) hash = userId.charCodeAt(i) + ((hash << 5) - hash);
+            return USER_COLORS[Math.abs(hash % USER_COLORS.length)];
         }
 
-        // --- 核心功能函數 ---
+        // --- (新功能) 群組清單管理 ---
+        function saveRoomsToStorage() {
+            localStorage.setItem('penpal-rooms', JSON.stringify(savedRooms));
+        }
 
-        // 1. 獲取或創建一個唯一的用戶ID，使用localStorage實現持久化
+        function loadRoomsFromStorage() {
+            const roomsJSON = localStorage.getItem('penpal-rooms');
+            savedRooms = roomsJSON ? JSON.parse(roomsJSON) : [];
+        }
+
+        function renderRoomList() {
+            roomList.innerHTML = '';
+            if (savedRooms.length === 0) {
+                roomList.innerHTML = '<li id="no-rooms-message">尚未儲存任何群組</li>';
+                return;
+            }
+
+            savedRooms.forEach(room => {
+                const li = document.createElement('li');
+                
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'room-name';
+                nameSpan.textContent = room.name;
+                li.appendChild(nameSpan);
+                
+                // 點擊列表項目直接加入
+                li.addEventListener('click', () => {
+                    roomPasswordInput.value = room.id;
+                    handleLoginAttempt();
+                });
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-room-btn';
+                deleteBtn.textContent = '×';
+                deleteBtn.title = '從列表中移除';
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation(); // 防止觸發 li 的點擊事件
+                    if (confirm(`確定要從列表中移除「${room.name}」嗎？`)) {
+                        savedRooms = savedRooms.filter(r => r.id !== room.id);
+                        saveRoomsToStorage();
+                        renderRoomList();
+                    }
+                });
+                li.appendChild(deleteBtn);
+
+                roomList.appendChild(li);
+            });
+        }
+
+        function addOrUpdateRoom(roomId, roomName) {
+            const existingRoom = savedRooms.find(r => r.id === roomId);
+            if (existingRoom) {
+                existingRoom.name = roomName;
+            } else {
+                savedRooms.push({ id: roomId, name: roomName });
+            }
+            saveRoomsToStorage();
+            renderRoomList(); // 更新登入畫面的列表
+        }
+
+        function handleEditRoomName() {
+            const currentRoom = savedRooms.find(r => r.id === currentRoomId);
+            if (!currentRoom) return;
+
+            const newName = prompt("請為此交流群組輸入新名稱：", currentRoom.name);
+            if (newName && newName.trim() !== '') {
+                currentRoom.name = newName.trim();
+                chatHeaderName.textContent = newName.trim();
+                saveRoomsToStorage();
+                // 登出後列表會自動更新，無需在這裡重新渲染
+            }
+        }
+        // --- (新功能) 功能結束 ---
+
         function getUserId() {
             let userId = localStorage.getItem('penpal-userId');
             if (!userId) {
@@ -395,14 +562,10 @@
             return userId;
         }
 
-        // 2. 顯示訊息，並根據是否為自己的訊息添加樣式
         function displayMessage({ name, text, timestamp, userId }) {
             const messageGroup = document.createElement('div');
             messageGroup.classList.add('message-group');
-            
-            if (userId === currentUserId) {
-                messageGroup.classList.add('own-message');
-            }
+            if (userId === currentUserId) messageGroup.classList.add('own-message');
 
             const senderName = document.createElement('div');
             senderName.classList.add('sender-name');
@@ -411,59 +574,47 @@
 
             const messageElement = document.createElement('div');
             messageElement.classList.add('message');
-            
             const textNode = document.createElement('span');
             textNode.textContent = text;
-            
             const timeNode = document.createElement('span');
             timeNode.classList.add('timestamp');
             timeNode.textContent = new Date(timestamp).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
             
             messageElement.appendChild(textNode);
             messageElement.appendChild(timeNode);
-
             messageGroup.appendChild(senderName);
             messageGroup.appendChild(messageElement);
             chatMessages.appendChild(messageGroup);
-            
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
 
-        // 3. 監聽訊息
         function listenForMessages() {
             if (messagesRef) {
-                chatMessages.innerHTML = ''; // 清空舊訊息
-                messagesRef.on('child_added', (snapshot) => {
+                chatMessages.innerHTML = '';
+                messagesRef.on('child_added', snapshot => {
                     const message = snapshot.val();
                     if(message) {
                          displayMessage(message);
-                         // 【通知功能新增】收到新訊息時，呼叫通知函數
                          showNotification(message);
                     }
                 });
             }
         }
         
-        // 4. 停止監聽訊息
         function stopListeningForMessages() {
-            if (messagesRef) {
-                messagesRef.off();
-            }
+            if (messagesRef) messagesRef.off();
         }
 
-        // 5. 發送訊息
         function sendMessage(event) {
             event.preventDefault();
             const messageText = messageInput.value.trim();
-
             if (messageText && messagesRef && currentUserName && currentUserId) {
-                const newMessage = {
+                messagesRef.push({
                     name: currentUserName,
                     text: messageText,
                     timestamp: firebase.database.ServerValue.TIMESTAMP,
                     userId: currentUserId
-                };
-                messagesRef.push(newMessage).catch(error => {
+                }).catch(error => {
                      console.error("訊息發送失敗:", error);
                      alert("無法發送訊息，可能是權限問題或網絡連線中斷。");
                 });
@@ -471,45 +622,24 @@
             }
         }
         
-        // 【通知功能新增】請求瀏覽器通知權限的函數
         function requestNotificationPermission() {
-            // 檢查瀏覽器是否支援 Notification API
-            if ('Notification' in window) {
-                // 如果權限不是 'granted' (已允許) 也不是 'denied' (已拒絕)，則發出請求
-                if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
-                    Notification.requestPermission().then(permission => {
-                        if (permission === 'granted') {
-                            console.log('桌面通知權限已成功獲取！');
-                        }
-                    });
-                }
+            if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') console.log('桌面通知權限已成功獲取！');
+                });
             }
         }
         
-        // 【通知功能新增】顯示桌面通知的函數
         function showNotification({ name, text, userId }) {
-            // 檢查權限是否為 'granted' (已允許)
-            // 檢查發送者不是目前使用者自己
-            // 檢查頁面是否處於背景狀態 (使用者正在看別的分頁或視窗)
             if (Notification.permission === 'granted' && userId !== currentUserId && document.hidden) {
-                const notificationTitle = `來自 ${name} 的新訊息`;
-                const notificationOptions = {
+                const notification = new Notification(`來自 ${name} 的新訊息`, {
                     body: text,
-                    // 您可以更換為一個自己的 Logo 或圖示 URL
                     icon: 'https://www.gstatic.com/images/branding/product/1x/firebase_48dp.png' 
-                };
-
-                const notification = new Notification(notificationTitle, notificationOptions);
-
-                // 設定點擊通知時，自動切換回此聊天室分頁
-                notification.onclick = () => {
-                    window.focus();
-                };
+                });
+                notification.onclick = () => window.focus();
             }
         }
 
-
-        // 6. 進入聊天室的核心功能（包含用戶名稱驗證）
         function joinChat(userName, password) {
             const userId = getUserId();
             const userNameRef = database.ref('usernames/' + userName);
@@ -518,57 +648,56 @@
             enterChatButton.textContent = '驗證中...';
             errorMessage.textContent = '';
             
-            // 使用 transaction 來安全地註冊用戶名稱
-            userNameRef.transaction((currentData) => {
-                if (currentData === null || currentData === userId) {
-                    return userId; // 如果名稱沒人註冊，或註冊者就是自己，則佔用/確認
-                }
-                return; // 中斷 transaction：表示名稱已被他人佔用
+            userNameRef.transaction(currentData => {
+                if (currentData === null || currentData === userId) return userId;
+                return;
             }, (error, committed, snapshot) => {
                 enterChatButton.disabled = false;
                 enterChatButton.textContent = '進入';
 
                 if (error) {
                     errorMessage.textContent = '發生錯誤，請重試。';
-                    console.error('Transaction 失敗:', error);
                 } else if (!committed) {
                     errorMessage.textContent = '此稱呼已被他人使用，請更換。';
-                    userNameInput.value = '';
                     userNameInput.focus();
                 } else {
-                    // 成功登入
                     currentUserName = userName;
                     currentUserId = userId;
                     currentRoomId = password;
                     messagesRef = database.ref('chatrooms/' + currentRoomId);
                     
-                    // 儲存資訊以便自動登入
                     localStorage.setItem('penpal-userName', userName);
-                    localStorage.setItem('penpal-roomPassword', password);
+                    
+                    // (新功能) 自動儲存新房間並更新標題
+                    const roomInfo = savedRooms.find(r => r.id === currentRoomId);
+                    if (roomInfo) {
+                        chatHeaderName.textContent = roomInfo.name;
+                    } else {
+                        const defaultName = currentRoomId; // 新房間預設名稱為密碼
+                        addOrUpdateRoom(currentRoomId, defaultName);
+                        chatHeaderName.textContent = defaultName;
+                    }
 
                     loginScreen.style.display = 'none';
                     chatScreen.style.display = 'flex';
                     
-                    // 【通知功能新增】登入成功後，立即請求通知權限
                     requestNotificationPermission();
-                    
                     listenForMessages();
                     messageInput.focus();
                 }
             });
         }
         
-        // 7. 處理登入按鈕點擊事件
         function handleLoginAttempt() {
             const userName = userNameInput.value.trim();
             const password = roomPasswordInput.value.trim();
 
-            if (userName === '') {
+            if (!userName) {
                 errorMessage.textContent = '您的稱呼不能為空。';
                 userNameInput.focus();
                 return;
             }
-            if (password === '') {
+            if (!password) {
                 errorMessage.textContent = '密碼不能為空。';
                 roomPasswordInput.focus();
                 return;
@@ -576,54 +705,44 @@
             joinChat(userName, password);
         }
 
-        // 8. 登出並清除已儲存的登入資訊
         function logout() {
             stopListeningForMessages();
             
-            // 清除登入資訊，但保留 userId
-            localStorage.removeItem('penpal-userName');
-            localStorage.removeItem('penpal-roomPassword');
-            
+            // 不清除使用者名稱和群組列表，只清除當前房間狀態
             currentRoomId = null;
             messagesRef = null;
-            currentUserName = null;
             
             chatScreen.style.display = 'none';
             loginScreen.style.display = 'flex';
             roomPasswordInput.value = '';
-            userNameInput.value = '';
             errorMessage.textContent = '';
-            userNameInput.focus();
+
+            renderRoomList(); // 重新整理列表，以防名稱有變動
+            roomPasswordInput.focus();
         }
 
-        // 9. 頁面加載時檢查是否有可用的自動登入資訊
-        function checkForAutoLogin() {
+        function initializeApp() {
+            currentUserId = getUserId();
             const storedUserName = localStorage.getItem('penpal-userName');
-            const storedRoomPassword = localStorage.getItem('penpal-roomPassword');
-            
-            currentUserId = getUserId(); // 確保總是有一個 userId
-            
-            if (storedUserName && storedRoomPassword) {
+            if (storedUserName) {
                 userNameInput.value = storedUserName;
-                roomPasswordInput.value = storedRoomPassword;
-                joinChat(storedUserName, storedRoomPassword);
             }
+            
+            loadRoomsFromStorage();
+            renderRoomList();
+            userNameInput.focus();
         }
 
         // --- 事件監聽 ---
         enterChatButton.addEventListener('click', handleLoginAttempt);
-        roomPasswordInput.addEventListener('keyup', (event) => {
-            if (event.key === 'Enter') handleLoginAttempt();
-        });
-        userNameInput.addEventListener('keyup', (event) => {
-            if (event.key === 'Enter') handleLoginAttempt();
-        });
-
+        roomPasswordInput.addEventListener('keyup', (event) => { if (event.key === 'Enter') handleLoginAttempt(); });
+        userNameInput.addEventListener('keyup', (event) => { if (event.key === 'Enter') handleLoginAttempt(); });
         messageForm.addEventListener('submit', sendMessage);
         logoutButton.addEventListener('click', logout);
+        editRoomNameButton.addEventListener('click', handleEditRoomName);
         
         // --- 初始化 ---
-        document.addEventListener('DOMContentLoaded', checkForAutoLogin);
+        document.addEventListener('DOMContentLoaded', initializeApp);
 
     </script>
 </body>
