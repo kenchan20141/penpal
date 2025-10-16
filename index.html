@@ -165,67 +165,16 @@
             cursor: pointer;
         }
 
-   /* --- 請用下面的程式碼，取代您原本的 .chat-messages 樣式 --- */
-
-/* 1. 修改 .chat-messages 本身 */
-/* 1. 修改 .chat-messages 容器本身 */
-/* 1. 修改 .chat-messages 容器本身 */
-.chat-messages {
+       .chat-messages {
     flex-grow: 1;
     overflow-y: auto;
-    /* 將 padding-bottom 減少，以消除底部的空白邊 */
-    padding: 20px 20px 10px 20px; /* 分別對應：上 右 下 左 */
-    position: relative;        
-    background-color: transparent;
-    z-index: 0;                
-}
-
-/* 2. 使用 ::before 偽元素來當作背景層，並加上調暗效果 */
-.chat-messages::before {
-    content: ''; /* 偽元素必須要有 content 屬性 */
-    position: absolute; /* 相對於 .chat-messages 絕對定位 */
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    padding: 20px;
     
-    /* 將背景圖片設定在這裡 */
+    /* --- 請在這裡加入以下設定 --- */
     background-image: url('背景圖片.png');
     background-size: cover;
     background-position: center center;
-    background-attachment: fixed; /* 背景固定，滾動內容時效果更好 */
-    
-    /* --- 關鍵：調暗背景的技巧 --- */
-    /* 我們使用 filter: brightness() 來降低亮度。
-       50% 代表亮度只有原來的一半，您可以調整 0% (全黑) 到 100% (原樣) 之間的數值。
-       例如：brightness(0.4) 或 brightness(60%)。
-    */
-    filter: brightness(50%);
-    
-    /* 把它移到內容的後面，確保聊天訊息能顯示在它之上 */
-    z-index: -1; 
-}
-
-
-/* 2. 建立一個偽元素來當作背景層 */
-.chat-messages::before {
-    content: ''; /* 偽元素必須要有 content 屬性 */
-    position: absolute; /* 相對於 .chat-messages 定位 */
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    
-    /* 將背景圖片設定在這裡 */
-    background-image: url('背景圖片.png');
-    background-size: cover;
-    background-position: center center;
-    background-attachment: fixed;
-    
-    /* 在這裡設定您要的透明度 */
-    opacity: 0.85;
-    
-    z-index: -1; /* 把它移到內容的後面 */
+    background-attachment: fixed; /* 讓背景固定，只有訊息在捲動 */
 }
 
         .message-group {
@@ -247,7 +196,7 @@
     padding: 10px 15px;
     border-radius: 12px;
     /* 將原本的 background-color: var(--message-bg-color); 修改或替換為以下這行 */
-    background-color: rgba(236, 239, 241, 1); /* 帶有90%不透明度的淺灰色 */
+    background-color: rgba(236, 239, 241, 0.9); /* 帶有90%不透明度的淺灰色 */
     word-wrap: break-word;
     line-height: 1.5;
     box-shadow: 0 1px 2px rgba(0,0,0,0.1); /* 可選：增加細微陰影以提升立體感 */
@@ -272,10 +221,9 @@
         }
 
         .message-group.own-message .message {
-    /* 將原本的 background-color: var(--primary-color); 修改或替換為以下這行 */
-    background-color: rgba(96, 125, 139, 1); /* 帶有90%不透明度的灰藍色 */
-    color: #ffffff; /* 白色文字 */
-}
+            background-color: var(--primary-color); /* 使用主題顏色 */
+            color: #ffffff; /* 白色文字 */
+        }
 
         .message-group.own-message .message .timestamp {
             color: #e0e0e0;
@@ -369,10 +317,9 @@
                 <h2>交流空間</h2>
                 <a id="logout-button">登出</a>
             </header>
-           <div id="chat-messages" class="chat-messages">
-
-    <!-- 訊息將會動態加載於此 -->
-</div>
+            <div id="chat-messages" class="chat-messages">
+                <!-- 訊息將會動態加載於此 -->
+            </div>
             <form id="message-form" class="chat-input">
                 <input type="text" id="message-input" class="input-field" placeholder="分享你的閱讀心得..." autocomplete="off">
                 <button type="submit" id="send-button" title="傳送">
