@@ -325,27 +325,26 @@
             z-index: 10; 
             min-height: 60px; 
         }
-        /* 修訂：響應式設計 */
         .header-left {
             display: flex;
             align-items: center;
             gap: 12px;
-            flex: 1; /* 允許左側區塊佔據多餘空間 */
-            min-width: 0; /* 關鍵：允許 flex item 縮小至小於其內容寬度 */
+            flex: 1;
+            min-width: 0;
         }
         .header-right {
             display: flex;
             align-items: center;
             gap: 12px;
-            flex-shrink: 0; /* 右側圖示區塊不縮小 */
+            flex-shrink: 0;
         }
         #chat-room-name {
             font-size: 18px;
             font-weight: 500;
             color: var(--text-color);
-            white-space: nowrap;      /* 確保名稱不換行 */
-            overflow: hidden;         /* 隱藏超出部分 */
-            text-overflow: ellipsis;  /* 超出部分以 ... 顯示 */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         #chat-room-name[contenteditable="true"] {
             outline: none;
@@ -492,14 +491,14 @@
         }
         /* --- 成員列表彈出視窗 --- */
         .modal {
-            display: none; /* 預設隱藏 */
+            display: none;
             position: fixed;
             z-index: 1000;
             left: 0;
             top: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0,0,0,0.5); /* 半透明遮罩 */
+            background-color: rgba(0,0,0,0.5);
         }
         .modal-content {
             background-color: var(--input-bg-color);
@@ -658,7 +657,7 @@
                 padding: 10px 15px;
             }
             .header-left, .header-right {
-                gap: 8px; /* 在手機上縮小圖示間距 */
+                gap: 8px;
             }
             .chat-messages {
                 padding: 10px;
@@ -849,9 +848,8 @@
             return USER_COLORS[Math.abs(hash % USER_COLORS.length)];
         }
         
-        // --- 修訂：群組清單管理 ---
+        // --- 群組清單管理 ---
         function saveRoomsToStorage() {
-            // 現在儲存的物件包含 id, name, 和 userName
             const roomsToSave = savedRooms.map(({ id, name, userName }) => ({ id, name, userName }));
             localStorage.setItem('penpal-rooms', JSON.stringify(roomsToSave));
         }
@@ -891,21 +889,15 @@
                 }
                 roomInfoDiv.appendChild(previewDiv);
                 li.appendChild(roomInfoDiv);
-
-                // 修訂：點擊群組清單的邏輯
                 li.addEventListener('click', () => {
                     const clickedRoom = savedRooms.find(r => r.id === room.id);
                     if (!clickedRoom) return;
-
-                    // 如果儲存的資料中有 userName，則自動填入
                     if (clickedRoom.userName) {
                         userNameInput.value = clickedRoom.userName;
                     }
-                    
                     roomPasswordInput.value = clickedRoom.id;
-                    handleLoginAttempt(); // 繼續使用通用的登入函式
+                    handleLoginAttempt();
                 });
-
                 const deleteBtn = document.createElement('button');
                 deleteBtn.className = 'delete-room-btn';
                 deleteBtn.innerHTML = '&times;';
@@ -945,15 +937,12 @@
             await Promise.all(fetchPromises);
             renderRoomList();
         }
-
-        // 修訂：addOrUpdateRoom 函式現在需要接收 userName
         function addOrUpdateRoom(roomId, roomName, userName) {
             let existingRoom = savedRooms.find(r => r.id === roomId);
             if (existingRoom) {
                 existingRoom.name = roomName;
-                existingRoom.userName = userName; // 更新稱呼
+                existingRoom.userName = userName;
             } else {
-                // 新增群組時，包含稱呼
                 existingRoom = { id: roomId, name: roomName, userName: userName };
                 savedRooms.push(existingRoom);
             }
@@ -984,7 +973,6 @@
                 editRoomNameButton.title = '修訂群組名稱';
                 
                 if (newName && newName !== originalRoomName) {
-                    // 更新群組名稱時，需要傳入目前的 currentUserName
                     addOrUpdateRoom(currentRoomId, newName, currentUserName);
                     chatHeaderName.textContent = newName;
                 } else {
@@ -1155,16 +1143,28 @@
             memberModal.style.display = "none";
         }
 
-        // --- 個人資料功能 ---
-        function loadProfileFromStorage(userId = currentUserId) {
-            const allProfiles = JSON.parse(localStorage.getItem('penpal-all-profiles') || '{}');
-            return allProfiles[userId] || { intro: '', book: '' };
+        // --- 修訂：個人資料功能（群組獨立）---
+        function loadProfileFromStorage(roomId, userId) {
+            const allRoomProfiles = JSON.parse(localStorage.getItem('penpal-room-profiles') || '{}');
+            // 如果該群組的資料存在，且該用戶的資料也存在，則返回
+            if (allRoomProfiles[roomId] && allRoomProfiles[roomId][userId]) {
+                return allRoomProfiles[roomId][userId];
+            }
+            // 否則返回預設值
+            return { intro: '', book: '' };
         }
 
-        function saveProfileToStorage(userId = currentUserId, intro, book) {
-            const allProfiles = JSON.parse(localStorage.getItem('penpal-all-profiles') || '{}');
-            allProfiles[userId] = { intro, book };
-            localStorage.setItem('penpal-all-profiles', JSON.stringify(allProfiles));
+        function saveProfileToStorage(roomId, userId, intro, book) {
+            // 獲取所有群組的個人資料
+            const allRoomProfiles = JSON.parse(localStorage.getItem('penpal-room-profiles') || '{}');
+            // 如果該群組的資料不存在，則初始化為一個空物件
+            if (!allRoomProfiles[roomId]) {
+                allRoomProfiles[roomId] = {};
+            }
+            // 更新特定群組下特定用戶的資料
+            allRoomProfiles[roomId][userId] = { intro, book };
+            // 儲存回去
+            localStorage.setItem('penpal-room-profiles', JSON.stringify(allRoomProfiles));
         }
 
         function openProfileModal(isEditing = false, userId = null, userName = null) {
@@ -1172,7 +1172,8 @@
             
             if (isEditing) {
                 profileNameInput.value = currentUserName;
-                const savedProfile = loadProfileFromStorage(currentUserId);
+                // 從當前群組讀取自己的個人資料
+                const savedProfile = loadProfileFromStorage(currentRoomId, currentUserId);
                 profileIntroInput.value = savedProfile.intro;
                 profileBookInput.value = savedProfile.book;
                 profileIntroInput.readOnly = false;
@@ -1181,7 +1182,8 @@
                 saveProfileBtn.style.display = 'block';
             } else {
                 profileNameInput.value = userName || '未知用戶';
-                const savedProfile = loadProfileFromStorage(userId);
+                // 從當前群組讀取他人的個人資料
+                const savedProfile = loadProfileFromStorage(currentRoomId, userId);
                 profileIntroInput.value = savedProfile.intro || '此用戶尚未設定自我介紹。';
                 profileBookInput.value = savedProfile.book || '此用戶尚未設定正在閱讀的書籍。';
                 profileIntroInput.readOnly = true;
@@ -1199,7 +1201,8 @@
         function saveProfile() {
             const intro = profileIntroInput.value.trim();
             const book = profileBookInput.value.trim();
-            saveProfileToStorage(currentUserId, intro, book);
+            // 儲存個人資料到當前的群組
+            saveProfileToStorage(currentRoomId, currentUserId, intro, book);
             closeProfileModal();
         }
 
@@ -1303,7 +1306,6 @@
                     const roomInfo = savedRooms.find(r => r.id === currentRoomId);
                     const roomName = roomInfo ? roomInfo.name : currentRoomId;
                     
-                    // 修訂：儲存群組時，傳入當前的 userName
                     addOrUpdateRoom(currentRoomId, roomName, currentUserName);
                     
                     chatHeaderName.textContent = roomName;
