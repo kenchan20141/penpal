@@ -374,7 +374,7 @@
         .chat-header .title-group {
              display: flex;
              align-items: center;
-             gap: 10px;
+             gap: 12px; /* 增加按鈕間距 */
         }
 
         #chat-room-name {
@@ -383,38 +383,29 @@
             color: var(--text-color);
         }
 
-        #edit-room-name-button {
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 18px;
-            padding: 5px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background-color 0.2s;
-        }
-
-        #edit-room-name-button:hover {
-            background-color: #e0e0e0;
-        }
-
+        #edit-room-name-button,
         #member-info-button {
             background: none;
             border: none;
             cursor: pointer;
-            font-size: 18px;
             padding: 5px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             transition: background-color 0.2s;
+            color: var(--text-color); /* 讓SVG繼承顏色 */
         }
 
+        #edit-room-name-button:hover,
         #member-info-button:hover {
             background-color: #e0e0e0;
+        }
+
+        #edit-room-name-button svg,
+        #member-info-button svg {
+            width: 20px;
+            height: 20px;
         }
 
         #logout-button {
@@ -662,8 +653,18 @@
             <header class="chat-header">
                 <div class="title-group">
                     <h2 id="chat-room-name">交流空間</h2>
-                    <button id="edit-room-name-button" title="修訂群組名稱">✏️</button>
-                    <button id="member-info-button" title="檢視群組成員">👥</button>
+                    <!-- SVG 按鈕 -->
+                    <button id="edit-room-name-button" title="修訂群組名稱">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
+                            <path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                    <button id="member-info-button" title="檢視群組成員">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
+                        </svg>
+                    </button>
                 </div>
                 <a id="logout-button">登出</a>
             </header>
@@ -888,8 +889,9 @@
             return userId;
         }
 
-        function displayMessage({ name, text, timestamp, userId }) {
+        function displayMessage({ name, text, timestamp, userId }, messageId) {
             const messageGroup = document.createElement('div');
+            messageGroup.id = `msg-${messageId}`;
             messageGroup.classList.add('message-group');
             if (userId === currentUserId) messageGroup.classList.add('own-message');
 
@@ -911,18 +913,34 @@
             messageGroup.appendChild(senderName);
             messageGroup.appendChild(messageElement);
             chatMessages.appendChild(messageGroup);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
+            return messageGroup;
         }
 
+        // **修訂部分：簡化滾動邏輯**
         function listenForMessages() {
             if (messagesRef) {
                 chatMessages.innerHTML = '';
+
+                const scrollToBottom = () => {
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                };
+
                 messagesRef.on('child_added', snapshot => {
                     const message = snapshot.val();
+                    const messageId = snapshot.key;
                     if(message) {
-                         displayMessage(message);
-                         showChatNotification(message);
+                        displayMessage(message, messageId);
+                        if (message.userId !== currentUserId) {
+                             showChatNotification(message);
+                        }
+                        // 每則新訊息都直接滾動到底部
+                        scrollToBottom();
                     }
+                });
+
+                // 首次載入完成後，確保滾動到底部
+                messagesRef.once('value', () => {
+                    setTimeout(scrollToBottom, 0); // 使用 setTimeout 確保 DOM 已渲染
                 });
             }
         }
@@ -935,15 +953,25 @@
             event.preventDefault();
             const messageText = messageInput.value.trim();
             if (messageText && messagesRef && currentUserName && currentUserId) {
-                messagesRef.push({
+                const messageData = {
                     name: currentUserName,
                     text: messageText,
                     timestamp: firebase.database.ServerValue.TIMESTAMP,
                     userId: currentUserId
+                };
+                
+                messagesRef.push(messageData).then(() => {
+                    const roomInList = savedRooms.find(r => r.id === currentRoomId);
+                    if (roomInList) {
+                        roomInList.lastMessageText = messageText;
+                        roomInList.lastMessageSender = currentUserName;
+                        renderRoomList(); // 更新列表顯示自己的最新訊息
+                    }
                 }).catch(error => {
                      console.error("訊息發送失敗:", error);
                      alert("無法發送訊息，可能是權限問題或網絡連線中斷。");
                 });
+
                 messageInput.value = '';
             }
         }
@@ -1143,6 +1171,7 @@
             joinChat(userName, password);
         }
 
+        // **修訂部分：移除不再需要的已讀標記邏輯**
         function logout() {
             stopListeningForMessages();
             stopListeningForMemberList();
@@ -1151,8 +1180,6 @@
             }
 
             currentRoomId = null;
-            currentUserName = null;
-            currentUserId = null;
             messagesRef = null;
             membersRef = null;
 
@@ -1166,7 +1193,8 @@
             roomPasswordInput.focus();
         }
 
-        // --- (修改) 應用程式啟動邏輯 ---
+
+        // --- 應用程式啟動邏輯 ---
         async function startChatApp() {
             passwordOverlay.style.display = 'none';
             mainContainer.style.display = 'flex';
