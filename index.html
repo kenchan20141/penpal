@@ -339,7 +339,6 @@
             font-size: 18px;
             font-weight: 500;
             color: var(--text-color);
-            /* 修訂：移除點擊樣式 */
         }
         #chat-room-name[contenteditable="true"] {
             outline: none;
@@ -348,7 +347,7 @@
         }
         #edit-room-name-button,
         #member-info-button,
-        #user-profile-button /* 新增 */ {
+        #user-profile-button {
             background: none;
             border: none;
             cursor: pointer;
@@ -362,13 +361,13 @@
         }
         #edit-room-name-button:hover,
         #member-info-button:hover,
-        #user-profile-button:hover /* 新增 */ {
+        #user-profile-button:hover {
             background-color: #e0e0e0;
             transform: scale(1.1);
         }
         #edit-room-name-button svg,
         #member-info-button svg,
-        #user-profile-button svg /* 新增 */ {
+        #user-profile-button svg {
             width: 20px;
             height: 20px;
         }
@@ -692,7 +691,6 @@
         <!-- 聊天室畫面 -->
         <div id="chat-screen">
             <header class="chat-header">
-                <!-- 修訂後：分為左右兩區塊 -->
                 <div class="header-left">
                     <h2 id="chat-room-name" spellcheck="false">交流空間</h2>
                     <button id="edit-room-name-button" title="修訂群組名稱">
@@ -708,7 +706,6 @@
                             <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
                         </svg>
                     </button>
-                    <!-- 新增：個人資料按鈕 -->
                     <button id="user-profile-button" title="編輯個人資料">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                            <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
@@ -804,7 +801,7 @@
         const chatHeaderName = document.getElementById('chat-room-name');
         const editRoomNameButton = document.getElementById('edit-room-name-button');
         const memberInfoButton = document.getElementById('member-info-button');
-        const userProfileButton = document.getElementById('user-profile-button'); // 新增
+        const userProfileButton = document.getElementById('user-profile-button');
         const chatMessages = document.getElementById('chat-messages');
         const messageForm = document.getElementById('message-form');
         const messageInput = document.getElementById('message-input');
@@ -833,8 +830,8 @@
         let savedRooms = [];
         let globalListeners = {};
         let memberListeners = {};
-        let isEditingRoomName = false; // 新增：用於追蹤群組名稱編輯狀態
-        let originalRoomName = ''; // 新增：用於儲存原始群組名稱
+        let isEditingRoomName = false;
+        let originalRoomName = '';
         const USER_COLORS = ['#e57373', '#ba68c8', '#7986cb', '#4fc3f7', '#4db6ac', '#aed581', '#ffb74d', '#ff8a65', '#90a4ae', '#a1887f'];
         function getColorForUserId(userId) {
             let hash = 0;
@@ -850,6 +847,8 @@
             const roomsJSON = localStorage.getItem('penpal-rooms');
             savedRooms = roomsJSON ? JSON.parse(roomsJSON) : [];
         }
+
+        // --- 修訂處 ---
         function renderRoomList() {
             roomList.innerHTML = '';
             if (savedRooms.length === 0) {
@@ -892,7 +891,15 @@
                 deleteBtn.title = '從列表中移除';
                 deleteBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    if (confirm(`確定要從列表中移除「${room.name}」嗎？`)) {
+                    // 更新確認訊息，告知使用者此操作會將其從成員名單中移除
+                    if (confirm(`確定要從列表中移除「${room.name}」嗎？\n此操作亦會將您從該群組成員名單中移除。`)) {
+                        // 新增邏輯：從 Firebase 中移除該使用者
+                        const userNameToRemove = localStorage.getItem('penpal-userName');
+                        if (userNameToRemove) {
+                            removeMemberFromRoom(room.id, userNameToRemove);
+                        }
+                        
+                        // 原有邏輯：從本地端移除
                         detachSingleGlobalListener(room.id);
                         detachSingleMemberListener(room.id);
                         savedRooms = savedRooms.filter(r => r.id !== room.id);
@@ -904,6 +911,7 @@
                 roomList.appendChild(li);
             });
         }
+        
         async function updateAndRenderRoomList() {
             const fetchPromises = savedRooms.map(room => {
                 return database.ref('chatrooms/' + room.id).orderByKey().limitToLast(1).once('value').then(snapshot => {
@@ -934,60 +942,49 @@
             updateAndRenderRoomList();
         }
         
-        // --- 修訂後：原地修訂群組名稱 ---
         const editIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" /></svg>`;
         const saveIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>`;
 
         function handleRoomNameKeydown(event) {
             if (event.key === 'Enter') {
                 event.preventDefault();
-                chatHeaderName.blur(); // 觸發 blur 事件來儲存
+                chatHeaderName.blur();
             } else if (event.key === 'Escape') {
-                isEditingRoomName = false; // 設為 false 以示取消
-                chatHeaderName.blur(); // 觸發 blur 事件來取消
+                isEditingRoomName = false;
+                chatHeaderName.blur();
             }
         }
 
         function toggleRoomNameEdit() {
-            if (isEditingRoomName) { // 狀態為編輯中，準備儲存
+            if (isEditingRoomName) {
                 const newName = chatHeaderName.textContent.trim();
-                
-                // 移除監聽器
                 chatHeaderName.removeEventListener('keydown', handleRoomNameKeydown);
-                
-                // 清理 UI
                 chatHeaderName.contentEditable = false;
                 editRoomNameButton.innerHTML = editIconSVG;
                 editRoomNameButton.title = '修訂群組名稱';
                 
-                // 儲存有效的新名稱
                 if (newName && newName !== originalRoomName) {
                     addOrUpdateRoom(currentRoomId, newName);
-                    chatHeaderName.textContent = newName; // 確保 UI 更新
+                    chatHeaderName.textContent = newName;
                 } else {
-                    chatHeaderName.textContent = originalRoomName; // 恢復舊名稱
+                    chatHeaderName.textContent = originalRoomName;
                 }
                 isEditingRoomName = false;
 
-            } else { // 狀態為非編輯，準備進入編輯模式
+            } else {
                 isEditingRoomName = true;
                 originalRoomName = chatHeaderName.textContent;
-                
                 chatHeaderName.contentEditable = true;
                 chatHeaderName.focus();
-                document.execCommand('selectAll', false, null); // 全選文字
-                
+                document.execCommand('selectAll', false, null);
                 editRoomNameButton.innerHTML = saveIconSVG;
                 editRoomNameButton.title = '儲存名稱';
                 
-                // 新增監聽器
                 chatHeaderName.addEventListener('keydown', handleRoomNameKeydown);
                 chatHeaderName.addEventListener('blur', () => {
-                    // 如果 isEditingRoomName 已經被 Escape 設為 false，則代表取消
                     if (!isEditingRoomName) {
                         chatHeaderName.textContent = originalRoomName;
                     }
-                    // 觸發 toggle 函數的儲存部分
                     toggleRoomNameEdit();
                 }, { once: true });
             }
@@ -1153,7 +1150,7 @@
             profileModalTitle.textContent = isEditing ? '編輯個人資料' : `「${userName || '未知用戶'}」的個人資料`;
             
             if (isEditing) {
-                profileNameInput.value = currentUserName; // 編輯時顯示自己的名字
+                profileNameInput.value = currentUserName;
                 const savedProfile = loadProfileFromStorage(currentUserId);
                 profileIntroInput.value = savedProfile.intro;
                 profileBookInput.value = savedProfile.book;
@@ -1162,7 +1159,7 @@
                 profileForm.classList.remove('profile-viewer');
                 saveProfileBtn.style.display = 'block';
             } else {
-                profileNameInput.value = userName || '未知用戶'; // 查看時顯示對方的名字
+                profileNameInput.value = userName || '未知用戶';
                 const savedProfile = loadProfileFromStorage(userId);
                 profileIntroInput.value = savedProfile.intro || '此用戶尚未設定自我介紹。';
                 profileBookInput.value = savedProfile.book || '此用戶尚未設定正在閱讀的書籍。';
@@ -1385,7 +1382,7 @@
         userNameInput.addEventListener('keyup', (event) => { if (event.key === 'Enter') handleLoginAttempt(); });
         messageForm.addEventListener('submit', sendMessage);
         logoutButton.addEventListener('click', logout);
-        editRoomNameButton.addEventListener('click', toggleRoomNameEdit); // 修訂
+        editRoomNameButton.addEventListener('click', toggleRoomNameEdit);
         memberInfoButton.addEventListener('click', openMemberModal);
         closeModalBtn.addEventListener('click', closeMemberModal);
         window.addEventListener('click', (event) => {
@@ -1398,8 +1395,8 @@
         });
 
         // 個人資料事件監聽
-        userProfileButton.addEventListener('click', () => { // 新增
-            openProfileModal(true); // 開啟自己的個人資料並設為可編輯
+        userProfileButton.addEventListener('click', () => {
+            openProfileModal(true);
         });
         saveProfileBtn.addEventListener('click', saveProfile);
         closeProfileBtns.forEach(btn => btn.addEventListener('click', closeProfileModal));
