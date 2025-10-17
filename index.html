@@ -72,6 +72,81 @@
             padding: 15px;
         }
 
+        /* --- (新增) 密碼驗證畫面 --- */
+        #password-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            backdrop-filter: blur(5px);
+            padding: 15px;
+        }
+
+        .password-box {
+            background-color: #fff;
+            padding: 30px 40px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            text-align: center;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .password-box h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: var(--text-color);
+        }
+
+        .password-box .subtitle {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 25px;
+        }
+
+        #site-password-input {
+            width: 100%;
+            padding: 12px 15px;
+            font-size: 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+
+        #site-password-submit {
+            width: 100%;
+            padding: 12px 20px;
+            font-size: 16px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        #site-password-submit:hover {
+            background-color: var(--primary-color-hover);
+        }
+
+        #site-password-submit:disabled {
+            background-color: #90a4ae;
+            cursor: not-allowed;
+        }
+
+        #password-error-message {
+            color: #d9534f;
+            margin-top: 15px;
+            height: 20px;
+            font-size: 14px;
+        }
+
         /* --- 主容器 --- */
         .container {
             width: 100%;
@@ -148,7 +223,6 @@
             background-color: #f9f9f9;
         }
 
-        /* --- (核心修改) 聊天室列表預覽樣式 --- */
         .room-info {
             display: flex;
             flex-direction: column;
@@ -159,12 +233,12 @@
 
         .room-name {
             font-weight: 600;
-            font-size: 17px; /* (新) 增大字體以突出顯示 */
-            color: #263238; /* (新) 採用更深的石墨黑色，增加視覺份量 */
+            font-size: 17px;
+            color: #263238;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            margin-bottom: 4px; /* (新) 增加與下方預覽的間距，形成主次分區 */
+            margin-bottom: 4px;
         }
 
         .last-message-preview {
@@ -539,12 +613,27 @@
                 width: 95%;
                 margin: 20% auto;
             }
+            .password-box {
+                padding: 25px;
+            }
         }
     </style>
 </head>
 <body>
 
-    <div class="container">
+    <!-- (新增) 密碼驗證畫面 -->
+    <div id="password-overlay">
+        <div class="password-box">
+            <h1>請輸入通行密碼</h1>
+            <p class="subtitle">此為私人創作空間，請輸入密碼以繼續。</p>
+            <input type="password" id="site-password-input" class="input-field" placeholder="通行密碼...">
+            <button id="site-password-submit">進入</button>
+            <p id="password-error-message"></p>
+        </div>
+    </div>
+
+    <!-- (修改) 主容器預設隱藏 -->
+    <div class="container" style="display: none;">
         <!-- 登入畫面 -->
         <div id="login-screen">
             <h1>創作社——以文會友</h1>
@@ -625,6 +714,12 @@
         const database = firebase.database();
 
         // --- DOM 元素獲取 ---
+        const passwordOverlay = document.getElementById('password-overlay');
+        const sitePasswordInput = document.getElementById('site-password-input');
+        const sitePasswordSubmit = document.getElementById('site-password-submit');
+        const passwordErrorMessage = document.getElementById('password-error-message');
+        const mainContainer = document.querySelector('.container');
+
         const loginScreen = document.getElementById('login-screen');
         const chatScreen = document.getElementById('chat-screen');
         const userNameInput = document.getElementById('user-name');
@@ -640,7 +735,6 @@
         const messageInput = document.getElementById('message-input');
         const roomList = document.getElementById('room-list');
 
-        // --- 成員列表 Modal 元素 ---
         const memberModal = document.getElementById('memberModal');
         const closeModalBtn = document.querySelector('.close');
         const memberListElement = document.getElementById('member-list');
@@ -651,10 +745,10 @@
         let currentUserName = null;
         let currentUserId = null;
         let messagesRef = null;
-        let membersRef = null; // 新增：成員列表的引用
+        let membersRef = null;
         let savedRooms = [];
         let globalListeners = {};
-        let memberListeners = {}; // 新增：追蹤成員列表的監聽器
+        let memberListeners = {};
 
         const USER_COLORS = ['#e57373', '#ba68c8', '#7986cb', '#4fc3f7', '#4db6ac', '#aed581', '#ffb74d', '#ff8a65', '#90a4ae', '#a1887f'];
 
@@ -729,7 +823,7 @@
                     e.stopPropagation();
                     if (confirm(`確定要從列表中移除「${room.name}」嗎？`)) {
                         detachSingleGlobalListener(room.id);
-                        detachSingleMemberListener(room.id); // 新增：登出時移除成員監聽
+                        detachSingleMemberListener(room.id);
                         savedRooms = savedRooms.filter(r => r.id !== room.id);
                         saveRoomsToStorage();
                         renderRoomList();
@@ -854,12 +948,9 @@
             }
         }
 
-        // --- 成員列表功能 ---
         function listenForMemberList() {
             if (membersRef) {
-                 // 清空現有列表
                  memberListElement.innerHTML = '';
-                 // 停止之前的監聽器
                  if (memberListeners[currentRoomId]) {
                      membersRef.off('value', memberListeners[currentRoomId]);
                  }
@@ -893,10 +984,8 @@
 
         function addMemberToRoom(roomId, userName, userId) {
             const memberRef = database.ref('chatrooms/' + roomId + '/members/' + userName);
-            // 寫入 userId 以確保與 usernames 中的記錄一致
             memberRef.set(userId).catch(error => {
                 console.error("加入成員列表失敗:", error);
-                // 這裡可以選擇顯示錯誤訊息或重試
             });
         }
 
@@ -907,7 +996,6 @@
             });
         }
 
-        // --- Modal 功能 ---
         function openMemberModal() {
             memberModal.style.display = "block";
         }
@@ -916,7 +1004,6 @@
             memberModal.style.display = "none";
         }
 
-        // --- 通知系統 ---
         function requestNotificationPermission() {
             if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
                 Notification.requestPermission().then(permission => {
@@ -929,7 +1016,7 @@
             if (Notification.permission === 'granted' && userId !== currentUserId && document.hidden) {
                 const notification = new Notification(`來自 ${name} 的新訊息`, {
                     body: text,
-                    icon: 'https://www.gstatic.com/images/branding/product/1x/firebase_48dp.png'
+                    icon: 'https://i.ibb.co/fYPQnzLS/image.png'
                 });
                 notification.onclick = () => window.focus();
             }
@@ -939,7 +1026,7 @@
              if (Notification.permission === 'granted' && message && message.userId !== currentUserId) {
                 const notification = new Notification(`交流群組「${room.name}」有新訊息`, {
                     body: `${message.name}: ${message.text}`,
-                    icon: 'https://www.gstatic.com/images/branding/product/1x/firebase_48dp.png',
+                    icon: 'https://i.ibb.co/fYPQnzLS/image.png',
                     tag: room.id
                 });
                 notification.onclick = () => {
@@ -1019,7 +1106,7 @@
                     currentUserId = userId;
                     currentRoomId = password;
                     messagesRef = database.ref('chatrooms/' + currentRoomId);
-                    membersRef = database.ref('chatrooms/' + currentRoomId + '/members'); // 新增：設定成員列表引用
+                    membersRef = database.ref('chatrooms/' + currentRoomId + '/members');
 
                     localStorage.setItem('penpal-userName', userName);
 
@@ -1032,10 +1119,10 @@
                     chatScreen.style.display = 'flex';
 
                     detachSingleGlobalListener(currentRoomId);
-                    addMemberToRoom(currentRoomId, currentUserName, currentUserId); // 新增：加入聊天室時將自己加入成員列表
+                    addMemberToRoom(currentRoomId, currentUserName, currentUserId);
 
                     listenForMessages();
-                    listenForMemberList(); // 新增：開始監聽成員列表
+                    listenForMemberList();
                     messageInput.focus();
                 }
             });
@@ -1058,16 +1145,16 @@
 
         function logout() {
             stopListeningForMessages();
-            stopListeningForMemberList(); // 新增：登出時停止監聽成員列表
+            stopListeningForMemberList();
             if (currentRoomId && currentUserName) {
-                removeMemberFromRoom(currentRoomId, currentUserName); // 新增：登出時將自己從成員列表中移除
+                removeMemberFromRoom(currentRoomId, currentUserName);
             }
 
             currentRoomId = null;
-            currentUserName = null; // 清除用戶名稱
+            currentUserName = null;
             currentUserId = null;
             messagesRef = null;
-            membersRef = null; // 清除成員列表引用
+            membersRef = null;
 
             chatScreen.style.display = 'none';
             loginScreen.style.display = 'flex';
@@ -1079,7 +1166,11 @@
             roomPasswordInput.focus();
         }
 
-        async function initializeApp() {
+        // --- (修改) 應用程式啟動邏輯 ---
+        async function startChatApp() {
+            passwordOverlay.style.display = 'none';
+            mainContainer.style.display = 'flex';
+
             currentUserId = getUserId();
             const storedUserName = localStorage.getItem('penpal-userName');
             if (storedUserName) {
@@ -1095,6 +1186,48 @@
             userNameInput.focus();
         }
 
+        function verifyPassword() {
+            const enteredPassword = sitePasswordInput.value.trim();
+            if (!enteredPassword) {
+                passwordErrorMessage.textContent = '密碼不能為空。';
+                return;
+            }
+
+            sitePasswordSubmit.disabled = true;
+            sitePasswordSubmit.textContent = '驗證中...';
+            passwordErrorMessage.textContent = '';
+
+            const passwordRef = database.ref('sitePassword');
+            passwordRef.once('value').then(snapshot => {
+                const correctPassword = snapshot.val();
+                if (enteredPassword === correctPassword) {
+                    localStorage.setItem('sitePasswordVerified', 'true');
+                    startChatApp();
+                } else {
+                    passwordErrorMessage.textContent = '密碼錯誤，請重試。';
+                    sitePasswordInput.value = '';
+                    sitePasswordInput.focus();
+                    sitePasswordSubmit.disabled = false;
+                    sitePasswordSubmit.textContent = '進入';
+                }
+            }).catch(error => {
+                console.error("讀取密碼時發生錯誤:", error);
+                passwordErrorMessage.textContent = '無法驗證密碼，請檢查網絡連線。';
+                sitePasswordSubmit.disabled = false;
+                sitePasswordSubmit.textContent = '進入';
+            });
+        }
+
+        function initializeApp() {
+            if (localStorage.getItem('sitePasswordVerified') === 'true') {
+                startChatApp();
+            } else {
+                passwordOverlay.style.display = 'flex';
+                mainContainer.style.display = 'none';
+                sitePasswordInput.focus();
+            }
+        }
+
         // --- 事件監聽 ---
         enterChatButton.addEventListener('click', handleLoginAttempt);
         roomPasswordInput.addEventListener('keyup', (event) => { if (event.key === 'Enter') handleLoginAttempt(); });
@@ -1102,11 +1235,19 @@
         messageForm.addEventListener('submit', sendMessage);
         logoutButton.addEventListener('click', logout);
         editRoomNameButton.addEventListener('click', handleEditRoomName);
-        memberInfoButton.addEventListener('click', openMemberModal); // 新增：點擊按鈕打開 Modal
-        closeModalBtn.addEventListener('click', closeMemberModal); // 新增：點擊 X 關閉 Modal
-        window.addEventListener('click', (event) => { // 新增：點擊 Modal 外部關閉 Modal
+        memberInfoButton.addEventListener('click', openMemberModal);
+        closeModalBtn.addEventListener('click', closeMemberModal);
+        window.addEventListener('click', (event) => {
             if (event.target === memberModal) {
                 closeMemberModal();
+            }
+        });
+
+        // (新增) 密碼驗證畫面的事件監聽
+        sitePasswordSubmit.addEventListener('click', verifyPassword);
+        sitePasswordInput.addEventListener('keyup', (event) => {
+            if (event.key === 'Enter') {
+                verifyPassword();
             }
         });
 
