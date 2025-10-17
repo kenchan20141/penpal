@@ -325,20 +325,27 @@
             z-index: 10; 
             min-height: 60px; 
         }
+        /* 修訂：響應式設計 */
         .header-left {
-             display: flex;
-             align-items: center;
-             gap: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1; /* 允許左側區塊佔據多餘空間 */
+            min-width: 0; /* 關鍵：允許 flex item 縮小至小於其內容寬度 */
         }
         .header-right {
-             display: flex;
-             align-items: center;
-             gap: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-shrink: 0; /* 右側圖示區塊不縮小 */
         }
         #chat-room-name {
             font-size: 18px;
             font-weight: 500;
             color: var(--text-color);
+            white-space: nowrap;      /* 確保名稱不換行 */
+            overflow: hidden;         /* 隱藏超出部分 */
+            text-overflow: ellipsis;  /* 超出部分以 ... 顯示 */
         }
         #chat-room-name[contenteditable="true"] {
             outline: none;
@@ -650,6 +657,9 @@
             .chat-header {
                 padding: 10px 15px;
             }
+            .header-left, .header-right {
+                gap: 8px; /* 在手機上縮小圖示間距 */
+            }
             .chat-messages {
                 padding: 10px;
             }
@@ -838,17 +848,17 @@
             for (let i = 0; i < userId.length; i++) hash = userId.charCodeAt(i) + ((hash << 5) - hash);
             return USER_COLORS[Math.abs(hash % USER_COLORS.length)];
         }
-        // --- 群組清單管理 ---
+        
+        // --- 修訂：群組清單管理 ---
         function saveRoomsToStorage() {
-            const roomsToSave = savedRooms.map(({ id, name }) => ({ id, name }));
+            // 現在儲存的物件包含 id, name, 和 userName
+            const roomsToSave = savedRooms.map(({ id, name, userName }) => ({ id, name, userName }));
             localStorage.setItem('penpal-rooms', JSON.stringify(roomsToSave));
         }
         function loadRoomsFromStorage() {
             const roomsJSON = localStorage.getItem('penpal-rooms');
             savedRooms = roomsJSON ? JSON.parse(roomsJSON) : [];
         }
-
-        // --- 修訂處 ---
         function renderRoomList() {
             roomList.innerHTML = '';
             if (savedRooms.length === 0) {
@@ -881,25 +891,32 @@
                 }
                 roomInfoDiv.appendChild(previewDiv);
                 li.appendChild(roomInfoDiv);
+
+                // 修訂：點擊群組清單的邏輯
                 li.addEventListener('click', () => {
-                    roomPasswordInput.value = room.id;
-                    handleLoginAttempt();
+                    const clickedRoom = savedRooms.find(r => r.id === room.id);
+                    if (!clickedRoom) return;
+
+                    // 如果儲存的資料中有 userName，則自動填入
+                    if (clickedRoom.userName) {
+                        userNameInput.value = clickedRoom.userName;
+                    }
+                    
+                    roomPasswordInput.value = clickedRoom.id;
+                    handleLoginAttempt(); // 繼續使用通用的登入函式
                 });
+
                 const deleteBtn = document.createElement('button');
                 deleteBtn.className = 'delete-room-btn';
                 deleteBtn.innerHTML = '&times;';
                 deleteBtn.title = '從列表中移除';
                 deleteBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    // 更新確認訊息，告知使用者此操作會將其從成員名單中移除
                     if (confirm(`確定要從列表中移除「${room.name}」嗎？\n此操作亦會將您從該群組成員名單中移除。`)) {
-                        // 新增邏輯：從 Firebase 中移除該使用者
                         const userNameToRemove = localStorage.getItem('penpal-userName');
                         if (userNameToRemove) {
                             removeMemberFromRoom(room.id, userNameToRemove);
                         }
-                        
-                        // 原有邏輯：從本地端移除
                         detachSingleGlobalListener(room.id);
                         detachSingleMemberListener(room.id);
                         savedRooms = savedRooms.filter(r => r.id !== room.id);
@@ -911,7 +928,6 @@
                 roomList.appendChild(li);
             });
         }
-        
         async function updateAndRenderRoomList() {
             const fetchPromises = savedRooms.map(room => {
                 return database.ref('chatrooms/' + room.id).orderByKey().limitToLast(1).once('value').then(snapshot => {
@@ -929,12 +945,16 @@
             await Promise.all(fetchPromises);
             renderRoomList();
         }
-        function addOrUpdateRoom(roomId, roomName) {
+
+        // 修訂：addOrUpdateRoom 函式現在需要接收 userName
+        function addOrUpdateRoom(roomId, roomName, userName) {
             let existingRoom = savedRooms.find(r => r.id === roomId);
             if (existingRoom) {
                 existingRoom.name = roomName;
+                existingRoom.userName = userName; // 更新稱呼
             } else {
-                existingRoom = { id: roomId, name: roomName };
+                // 新增群組時，包含稱呼
+                existingRoom = { id: roomId, name: roomName, userName: userName };
                 savedRooms.push(existingRoom);
             }
             saveRoomsToStorage();
@@ -964,7 +984,8 @@
                 editRoomNameButton.title = '修訂群組名稱';
                 
                 if (newName && newName !== originalRoomName) {
-                    addOrUpdateRoom(currentRoomId, newName);
+                    // 更新群組名稱時，需要傳入目前的 currentUserName
+                    addOrUpdateRoom(currentRoomId, newName, currentUserName);
                     chatHeaderName.textContent = newName;
                 } else {
                     chatHeaderName.textContent = originalRoomName;
@@ -1281,7 +1302,10 @@
                     localStorage.setItem('penpal-userName', userName);
                     const roomInfo = savedRooms.find(r => r.id === currentRoomId);
                     const roomName = roomInfo ? roomInfo.name : currentRoomId;
-                    addOrUpdateRoom(currentRoomId, roomName);
+                    
+                    // 修訂：儲存群組時，傳入當前的 userName
+                    addOrUpdateRoom(currentRoomId, roomName, currentUserName);
+                    
                     chatHeaderName.textContent = roomName;
                     loginScreen.style.display = 'none';
                     chatScreen.style.display = 'flex';
