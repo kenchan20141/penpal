@@ -8,17 +8,17 @@
     <style>
         /* --- 全局與侘寂風設計 (新色調) --- */
         :root {
-            --background-color: #f4f4f5; /* 更柔和的灰白背景 */
+            --background-color: #f4f4f5;
             --text-color: #333;
-            --primary-color: #607D8B; /* 低調的灰藍色 */
-            --primary-color-hover: #546E7A; /* 按鈕懸停色 */
-            --border-color: #e0e0e0; /* 更淺的邊框 */
+            --primary-color: #607D8B;
+            --primary-color-hover: #546E7A;
+            --border-color: #e0e0e0;
             --input-bg-color: #fff;
-            --message-bg-color: #eceff1; /* 訊息氣泡背景 */
+            --message-bg-color: #eceff1;
             --font-family: 'Noto Serif TC', 'cwTeXHei', 'cwTeXFangSong', 'cwTeXKai', 'cwTeXMing', 'PingFang TC', 'Microsoft JhengHei', serif;
             --danger-color: #c95c58;
             --danger-color-hover: #b04b47;
-            --subtle-text-color: #777; /* 用於預覽文字 */
+            --subtle-text-color: #777;
         }
 
         * {
@@ -47,7 +47,6 @@
             padding: 15px;
         }
 
-        /* --- 主容器 --- */
         .container {
             width: 100%;
             max-width: 800px;
@@ -62,7 +61,6 @@
             overflow: hidden;
         }
 
-        /* --- 登入畫面 --- */
         #login-screen {
             display: flex;
             flex-direction: column;
@@ -123,7 +121,6 @@
             background-color: #f9f9f9;
         }
 
-        /* --- (核心修改) 聊天室列表預覽樣式 --- */
         .room-info {
             display: flex;
             flex-direction: column;
@@ -134,12 +131,12 @@
 
         .room-name {
             font-weight: 600;
-            font-size: 17px; /* (新) 增大字體以突出顯示 */
-            color: #263238; /* (新) 採用更深的石墨黑色，增加視覺份量 */
+            font-size: 17px;
+            color: #263238;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            margin-bottom: 4px; /* (新) 增加與下方預覽的間距，形成主次分區 */
+            margin-bottom: 4px;
         }
 
         .last-message-preview {
@@ -254,7 +251,6 @@
             font-size: 14px;
         }
 
-        /* --- 聊天室畫面 --- */
         #chat-screen {
             display: none;
             flex-direction: column;
@@ -389,12 +385,12 @@
             border-color: var(--primary-color);
         }
 
-        #send-button {
+        #attach-button, #send-button {
             background: none;
             border: none;
             cursor: pointer;
             padding: 8px;
-            margin-left: 10px;
+            margin-left: 8px;
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -402,7 +398,12 @@
             transition: background-color 0.2s;
         }
 
-        #send-button:hover {
+        #attach-button {
+            margin-left: 0;
+            margin-right: 8px;
+        }
+
+        #attach-button:hover, #send-button:hover {
             background-color: #e0e0e0;
         }
 
@@ -457,6 +458,8 @@
             <div id="chat-messages" class="chat-messages"></div>
             <form id="message-form" class="chat-input">
                 <input type="text" id="message-input" class="input-field" placeholder="分享你的閱讀心得..." autocomplete="off">
+                <input type="file" id="file-input" style="display: none;" accept=".jpg,.jpeg,.png,.gif,.mp4,.mov,.mp3,.wav,.pdf,.doc,.docx,.ppt,.pptx">
+                <button type="button" id="attach-button" title="附加檔案">📎</button>
                 <button type="submit" id="send-button" title="傳送">
                     <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
                 </button>
@@ -467,6 +470,7 @@
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
     
     <script>
@@ -483,6 +487,7 @@
         
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
+        const storage = firebase.storage(); // ← 新增 Storage
 
         // --- DOM 元素獲取 ---
         const loginScreen = document.getElementById('login-screen');
@@ -498,7 +503,9 @@
         const messageForm = document.getElementById('message-form');
         const messageInput = document.getElementById('message-input');
         const roomList = document.getElementById('room-list');
-        
+        const fileInput = document.getElementById('file-input');
+        const attachButton = document.getElementById('attach-button');
+
         // --- 全局狀態 ---
         let currentRoomId = null;
         let currentUserName = null;
@@ -506,6 +513,7 @@
         let messagesRef = null;
         let savedRooms = []; 
         let globalListeners = {};
+        let pendingFile = null; // ← 新增：待上傳檔案
 
         const USER_COLORS = ['#e57373', '#ba68c8', '#7986cb', '#4fc3f7', '#4db6ac', '#aed581', '#ffb74d', '#ff8a65', '#90a4ae', '#a1887f'];
         
@@ -609,7 +617,6 @@
             renderRoomList();
         }
 
-
         function addOrUpdateRoom(roomId, roomName) {
             let existingRoom = savedRooms.find(r => r.id === roomId);
             if (existingRoom) {
@@ -644,7 +651,8 @@
             return userId;
         }
 
-        function displayMessage({ name, text, timestamp, userId }) {
+        // --- 顯示訊息（含附件）---
+        function displayMessage({ name, text, fileUrl, fileName, fileType, timestamp, userId }) {
             const messageGroup = document.createElement('div');
             messageGroup.classList.add('message-group');
             if (userId === currentUserId) messageGroup.classList.add('own-message');
@@ -656,14 +664,41 @@
 
             const messageElement = document.createElement('div');
             messageElement.classList.add('message');
-            const textNode = document.createElement('span');
-            textNode.textContent = text;
+
+            if (text) {
+                const textNode = document.createElement('span');
+                textNode.textContent = text;
+                messageElement.appendChild(textNode);
+                messageElement.appendChild(document.createElement('br'));
+            }
+
+            if (fileUrl && fileName) {
+                const fileLink = document.createElement('a');
+                fileLink.href = fileUrl;
+                fileLink.target = '_blank';
+                fileLink.rel = 'noopener noreferrer';
+                fileLink.style.color = 'inherit';
+                fileLink.style.textDecoration = 'underline';
+                fileLink.style.display = 'inline-block';
+                fileLink.style.marginTop = '4px';
+
+                let icon = '📎';
+                if (fileType?.startsWith('image/')) icon = '🖼️';
+                else if (fileType?.startsWith('video/')) icon = '🎥';
+                else if (fileType?.startsWith('audio/')) icon = '🎵';
+                else if (fileType === 'application/pdf') icon = '📄';
+                else if (fileType?.includes('word')) icon = '📝';
+                else if (fileType?.includes('presentation')) icon = '📊';
+
+                fileLink.textContent = `${icon} ${fileName}`;
+                messageElement.appendChild(fileLink);
+            }
+
             const timeNode = document.createElement('span');
             timeNode.classList.add('timestamp');
             timeNode.textContent = new Date(timestamp).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
-            
-            messageElement.appendChild(textNode);
             messageElement.appendChild(timeNode);
+
             messageGroup.appendChild(senderName);
             messageGroup.appendChild(messageElement);
             chatMessages.appendChild(messageGroup);
@@ -687,20 +722,90 @@
             if (messagesRef) messagesRef.off();
         }
 
-        function sendMessage(event) {
+        // --- 附件功能 ---
+        attachButton.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const allowedTypes = [
+                    'image/jpeg', 'image/png', 'image/gif',
+                    'video/mp4', 'video/quicktime',
+                    'audio/mpeg', 'audio/wav',
+                    'application/pdf',
+                    'application/msword',
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    'application/vnd.ms-powerpoint',
+                    'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+                ];
+                if (!allowedTypes.includes(file.type)) {
+                    alert('不支援的檔案類型。請上傳圖片、影片、音訊、PDF、DOC、DOCX、PPT 或 PPTX。');
+                    fileInput.value = '';
+                    pendingFile = null;
+                    return;
+                }
+                if (file.size > 20 * 1024 * 1024) {
+                    alert('檔案太大（上限 20MB）');
+                    fileInput.value = '';
+                    pendingFile = null;
+                    return;
+                }
+                pendingFile = file;
+                messageInput.placeholder = `已選擇：${file.name}`;
+            } else {
+                pendingFile = null;
+                messageInput.placeholder = '分享你的閱讀心得...';
+            }
+        });
+
+        // --- 發送訊息（含附件）---
+        async function sendMessage(event) {
             event.preventDefault();
             const messageText = messageInput.value.trim();
-            if (messageText && messagesRef && currentUserName && currentUserId) {
-                messagesRef.push({
+            
+            if (!messagesRef || !currentUserName || !currentUserId) return;
+
+            if (!messageText && !pendingFile) {
+                messageInput.focus();
+                return;
+            }
+
+            try {
+                let fileUrl = null;
+                let fileName = null;
+                let fileType = null;
+
+                if (pendingFile) {
+                    const timestamp = Date.now();
+                    const filePath = `attachments/${currentRoomId}/${currentUserId}_${timestamp}_${pendingFile.name}`;
+                    const uploadTask = storage.ref(filePath).put(pendingFile);
+                    await uploadTask;
+                    fileUrl = await storage.ref(filePath).getDownloadURL();
+                    fileName = pendingFile.name;
+                    fileType = pendingFile.type;
+                }
+
+                await messagesRef.push({
                     name: currentUserName,
                     text: messageText,
+                    fileUrl: fileUrl,
+                    fileName: fileName,
+                    fileType: fileType,
                     timestamp: firebase.database.ServerValue.TIMESTAMP,
                     userId: currentUserId
-                }).catch(error => {
-                     console.error("訊息發送失敗:", error);
-                     alert("無法發送訊息，可能是權限問題或網絡連線中斷。");
                 });
+
+                // 清空
                 messageInput.value = '';
+                pendingFile = null;
+                fileInput.value = '';
+                messageInput.placeholder = '分享你的閱讀心得...';
+
+            } catch (error) {
+                console.error('發送失敗:', error);
+                alert('發送失敗：' + (error.message || '未知錯誤'));
             }
         }
         
@@ -717,7 +822,7 @@
             if (Notification.permission === 'granted' && userId !== currentUserId && document.hidden) {
                 const notification = new Notification(`來自 ${name} 的新訊息`, {
                     body: text,
-                    icon: 'https://www.gstatic.com/images/branding/product/1x/firebase_48dp.png' 
+                    icon: 'https://www.gstatic.com/images/branding/product/1x/firebase_48dp.png'
                 });
                 notification.onclick = () => window.focus();
             }
@@ -726,7 +831,7 @@
         function showGlobalNotification(message, room) {
              if (Notification.permission === 'granted' && message && message.userId !== currentUserId) {
                 const notification = new Notification(`交流群組「${room.name}」有新訊息`, {
-                    body: `${message.name}: ${message.text}`,
+                    body: `${message.name}: ${message.text || message.fileName}`,
                     icon: 'https://www.gstatic.com/images/branding/product/1x/firebase_48dp.png',
                     tag: room.id
                 });
@@ -757,7 +862,7 @@
                 if (room.id !== currentRoomId) {
                     const message = snapshot.val();
                     showGlobalNotification(message, room);
-                    room.lastMessageText = message.text;
+                    room.lastMessageText = message.text || message.fileName;
                     room.lastMessageSender = message.name;
                     renderRoomList(); 
                 }
