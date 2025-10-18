@@ -1640,59 +1640,68 @@
                 return;
             }
 
+            console.log(`佇列人數達到 ${snapshot.numChildren()}，滿足 ${requiredSize} 人條件，嘗試啟動 Transaction。`);
+
             // 此變數用於在 Transaction 更新函數與完成回調之間傳遞「被配對的使用者列表」
-            // 只有當此客戶端的 Transaction 成功提交時，它才會有值。
-            let potentialMatch = null;
+            let matchedUsers = null;
 
-            // 使用 Transaction 原子性地讀取並修改佇列，防止競爭條件
+            // 使用 Transaction 原子性地讀取並修改佇列
             matchingState.ref.transaction(currentQueueData => {
-                // 在 Transaction 內部再次驗證佇列狀態，因為數據可能在期間發生變化
+                // 在 Transaction 內部再次驗證佇列狀態
                 if (currentQueueData && Object.keys(currentQueueData).length >= requiredSize) {
-                    // 從佇列中取出所需數量的使用者進行配對
-                    const usersToMatch = Object.entries(currentQueueData).slice(0, requiredSize);
-                    const userIdsToMatch = usersToMatch.map(([id, _]) => id);
+                    
+                    const usersInQueue = Object.entries(currentQueueData);
+                    const userIdsInQueue = usersInQueue.map(([id, _]) => id);
 
-                    // 檢查當前使用者是否包含在這次的配對名單中
-                    if (userIdsToMatch.includes(currentUserId)) {
-                        // 如果是，則此客戶端將嘗試完成這次配對
+                    // 檢查當前使用者是否還在佇列中（可能已被其他成功的 Transaction 移除）
+                    if (userIdsInQueue.includes(currentUserId)) {
+                        // 如果還在，則此客戶端將嘗試完成這次配對
+                        // 從佇列中取出所需數量的使用者
+                        const usersToMatch = usersInQueue.slice(0, requiredSize);
+                        
                         // 暫存配對列表，以便在 Transaction 成功後使用
-                        potentialMatch = usersToMatch;
+                        matchedUsers = usersToMatch;
+
+                        console.log('Transaction 內部：準備配對', matchedUsers.map(u => u[1]));
 
                         // 從佇列數據中移除已被配對的使用者
                         usersToMatch.forEach(([id, _]) => {
                             delete currentQueueData[id];
                         });
+                        
+                        // 返回修改後的佇列數據
+                        return currentQueueData;
                     }
-                    // 返回修改後的佇列數據。
-                    // 如果當前使用者不在配對名單中，將返回未修改的數據，
-                    // 其 Transaction 很可能會因為其他客戶端的成功提交而被中止。
-                    return currentQueueData;
                 }
                 
-                // 如果條件不滿足，返回 undefined 以中止 Transaction
+                // 如果條件不滿足（例如自己已被配對），返回 undefined 以中止此客戶端的 Transaction
                 return;
 
-            }, (error, committed, snapshot) => {
+            }, (error, committed, snapshotAfter) => {
                 // 這是 Transaction 的完成回調函數
 
                 if (error) {
                     console.error('配對 Transaction 失敗:', error);
-                    // 可以在此處添加錯誤處理，例如停止配對
-                } else if (committed && potentialMatch) {
-                    // **關鍵**：僅當 Transaction 成功提交 (committed = true)，
-                    // 且是由此客戶端發起的配對 (potentialMatch 不為 null) 時，
-                    // 才執行建立群組的副作用操作。
-                    
-                    console.log('Transaction 成功，由本客戶端建立群組:', potentialMatch);
-                    createGroupForMatchedUsers(potentialMatch);
-
-                    // 成功建立群組後，這位使用者就可以停止等待配對了。
-                    // 其他成員會透過 listenForMyNewRooms 監聽器被通知並停止配對。
+                    alert('配對時發生錯誤，請稍後再試。');
                     stopMatching();
+                } else if (committed && matchedUsers) {
+                    // **關鍵**：僅當 Transaction 成功提交 (committed = true)，
+                    // 且是由此客戶端成功鎖定了一組配對 (matchedUsers 不為 null) 時，
+                    // 才執行建立群組的操作。
+                    
+                    console.log('Transaction 成功提交！由本客戶端建立群組給:', matchedUsers.map(u => u[1]));
+                    createGroupForMatchedUsers(matchedUsers);
+
+                    // 成功觸發建立群組後，這位使用者就可以停止等待配對了。
+                    // 其他成員會透過 listenForMyNewRooms 監聽器被通知並自動停止配對。
+                    stopMatching();
+
+                } else {
+                    // Transaction 未提交，或未輪到自己處理配對。
+                    // 這通常是正常的，代表有另一位使用者的 Transaction 搶先成功了。
+                    // 此客戶端不需做任何事，只需靜待 `listenForMyNewRooms` 的新群組通知即可。
+                    console.log('Transaction 未提交或無配對任務，可能是其他客戶端已完成。Committed:', committed);
                 }
-                // 如果 Transaction 未提交 (committed = false)，
-                // 代表有另一位使用者的 Transaction 搶先成功了。
-                // 此客戶端不需做任何事，只需靜待 `listenForMyNewRooms` 的通知即可。
             });
         }
         
