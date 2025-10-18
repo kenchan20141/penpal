@@ -1633,43 +1633,51 @@
             });
         }
 
-      / --- 請將此函數完整替換掉舊版本 ---
-        // 檢查是否滿足配對條件 (已修正客戶端競態問題)
+        // 檢查是否滿足配對條件
         function checkForMatch(snapshot, requiredSize) {
-            // 條件不足或自己不在配對中，則直接返回
             if (!matchingState.isMatching || !snapshot.exists() || snapshot.numChildren() < requiredSize) {
-                return;
+                return; // 條件不滿足，不執行任何操作
             }
 
-            const queueData = snapshot.val();
-            const usersInQueue = Object.entries(queueData);
-            const usersToMatch = usersInQueue.slice(0, requiredSize);
-            const userIdsToMatch = usersToMatch.map(([id, name]) => id);
+            // 使用 Transaction 確保原子操作，防止多人同時建立群組
+            matchingState.ref.transaction(currentQueueData => {
+                if (currentQueueData && Object.keys(currentQueueData).length >= requiredSize) {
+                    // 提取需要配對的使用者
+                    const usersToMatch = Object.entries(currentQueueData).slice(0, requiredSize);
+                    const userIdsToMatch = usersToMatch.map(([id, name]) => id);
 
-            // 1. 確認自己是否在這次的配對名單中
-            if (!userIdsToMatch.includes(currentUserId)) {
-                return; 
-            }
-
-            // 2. 對 ID 進行排序，以選出一位固定的 "建立者" (Creator)
-            //    排序後的第一個 ID 即為建立者
-            const sortedUserIds = [...userIdsToMatch].sort();
-            const creatorId = sortedUserIds[0];
-
-            // 3. 只有被選為 "建立者" 的客戶端才執行建立群組的動作
-            if (creatorId === currentUserId) {
-                // 為防止重複觸發，一旦決定要建立群組，就立刻停止監聽
-                if (matchingState.listener) {
-                    matchingState.ref.off('value', matchingState.listener);
-                    matchingState.listener = null; // 清空監聽器
+                    // 檢查自己是否在這次的配對名單中
+                    if (userIdsToMatch.includes(currentUserId)) {
+                        // 從佇列中移除已配對的使用者
+                        usersToMatch.forEach(([id, name]) => {
+                            delete currentQueueData[id];
+                        });
+                        
+                        // 建立群組（這個操作放在 transaction 外部，因為 transaction 內不能有副作用）
+                        createGroupForMatchedUsers(usersToMatch);
+                    }
+                    return currentQueueData;
                 }
-                console.log("我是建立者，正在建立群組...");
-                createGroupForMatchedUsers(usersToMatch);
-            }
+                // 如果條件不滿足，返回 undefined 中止 transaction
+                return; 
+            }, (error, committed, snapshot) => {
+                if (error) {
+                    console.error('配對 Transaction 失敗:', error);
+                } else if (!committed) {
+                    // Transaction 未提交，可能因為數據在過程中被改變，這是正常的，等待下一次觸發即可
+                } else {
+                    // Transaction 成功，如果自己被配對，則停止本地的配對狀態
+                    if (matchingState.isMatching) {
+                        const matchedUserIds = Object.keys(snapshot.val() || {});
+                        if (!matchedUserIds.includes(currentUserId)) {
+                           stopMatching();
+                        }
+                    }
+                }
+            });
         }
-
-        // --- 請將此函數完整替換掉舊版本 ---
-        // 為配對成功的使用者建立群組 (已新增清理佇列的功能)
+        
+        // 為配對成功的使用者建立群組
         function createGroupForMatchedUsers(users) {
             const newRoomRef = database.ref('chatrooms').push();
             const newRoomId = newRoomRef.key;
@@ -1677,38 +1685,28 @@
 
             const members = {};
             const userRoomUpdates = {};
-            const queuePath = matchingState.size === 2 ? 'twoPerson' : 'threePerson';
-            
-            // 準備一個多路徑更新 (multi-path update) 物件
-            const updates = {};
-            
-            // 1. 準備新房間的成員資料
             users.forEach(([userId, userName]) => {
                 members[userName] = userId;
-                // 2. 準備要發送給每個成員的新房間通知
-                userRoomUpdates[`/userRooms/${userId}/${newRoomId}`] = newRoomName;
-                // 3. 準備從配對佇列中刪除已配對的成員
-                updates[`/matchingQueue/${queuePath}/${userId}`] = null;
+                userRoomUpdates[`/userRooms/${userId}/${newRoomId}`] = newRoomName; // 通知所有成員
             });
-            
+
             const newRoomData = {
                 members: members,
+                // 可以添加創建時間等元數據
                 createdAt: firebase.database.ServerValue.TIMESTAMP
             };
             
-            // 將新房間資料和成員通知合併到 updates 物件中
+            // 使用 multi-path update 一次性寫入所有數據
+            const updates = {};
             updates[`/chatrooms/${newRoomId}`] = newRoomData;
             Object.assign(updates, userRoomUpdates);
 
-            // 4. 透過一次性的 update 操作，原子性地完成所有資料寫入
             database.ref().update(updates)
                 .then(() => {
-                    console.log(`成功為 ${users.length} 位使用者建立群組 ${newRoomId} 並清理佇列。`);
-                    // 此時，所有成員的 listenForMyNewRooms 監聽器會被觸發
+                    console.log(`成功為 ${users.length} 位使用者建立群組 ${newRoomId}`);
                 })
                 .catch(err => {
-                    console.error("建立群組並清理佇列失敗:", err);
-                    // 如果失敗，可能需要一些重試或錯誤處理機制
+                    console.error("建立群組失敗:", err);
                 });
         }
 
