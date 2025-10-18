@@ -1437,11 +1437,13 @@
             loginScreen.style.display = 'flex';
             roomPasswordInput.value = '';
             errorMessage.textContent = '';
-            // [MODIFIED] No longer need updateAndRenderRoomList. The next function re-establishes all real-time listeners.
+  
             listenToAllSavedRoomsForNotifications();
-           // roomPasswordInput.focus(); // 保持註解
-
-            // [新增] 移除目前頁面上任何元素的焦點
+         
+            // --- 新增這兩行 ---
+            userNameInput.blur();
+            roomPasswordInput.blur();
+   
             if (document.activeElement) {
                 document.activeElement.blur();
             }
