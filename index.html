@@ -1439,7 +1439,12 @@
             errorMessage.textContent = '';
             // [MODIFIED] No longer need updateAndRenderRoomList. The next function re-establishes all real-time listeners.
             listenToAllSavedRoomsForNotifications();
-           // roomPasswordInput.focus(); // 將此行註解或刪除
+           // roomPasswordInput.focus(); // 保持註解
+
+            // [新增] 移除目前頁面上任何元素的焦點
+            if (document.activeElement) {
+                document.activeElement.blur();
+            }
         }
         
         // [MODIFIED] Startup logic is simplified.
