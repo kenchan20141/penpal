@@ -953,9 +953,12 @@
                 roomList.appendChild(li);
             });
         }
+        
+        // [修正] - 確保從正確的 'messages' 路徑下讀取最後一則訊息
         async function updateAndRenderRoomList() {
             const fetchPromises = savedRooms.map(room => {
-                return database.ref('chatrooms/' + room.id).orderByKey().limitToLast(1).once('value').then(snapshot => {
+                // 將查詢路徑指向 '.../messages'，避免讀到 'members' 或 'profiles'
+                return database.ref('chatrooms/' + room.id + '/messages').orderByKey().limitToLast(1).once('value').then(snapshot => {
                     if (snapshot.exists()) {
                         const [messageId] = Object.keys(snapshot.val());
                         const message = snapshot.val()[messageId];
@@ -965,11 +968,16 @@
                         room.lastMessageText = null;
                         room.lastMessageSender = null;
                     }
+                }).catch(error => {
+                    console.error(`無法讀取群組 ${room.id} 的最後訊息:`, error);
+                    room.lastMessageText = '讀取失敗';
+                    room.lastMessageSender = '';
                 });
             });
             await Promise.all(fetchPromises);
             renderRoomList();
         }
+
         function addOrUpdateRoom(roomId, roomName, userName) {
             let existingRoom = savedRooms.find(r => r.id === roomId);
             if (existingRoom) {
@@ -1340,25 +1348,32 @@
         function detachAllMemberListeners() {
             Object.keys(memberListeners).forEach(detachSingleMemberListener);
         }
+
+        // [修正] - 確保背景監聽也指向正確的 'messages' 路徑
         function listenToSingleRoom(room) {
             detachSingleGlobalListener(room.id);
             const now = Date.now();
-            const roomRef = database.ref('chatrooms/' + room.id);
+            // 將監聽路徑指向 '.../messages'
+            const roomRef = database.ref('chatrooms/' + room.id + '/messages');
             const listener = roomRef.orderByChild('timestamp').startAt(now).on('child_added', (snapshot) => {
                 if (room.id !== currentRoomId) {
                     const message = snapshot.val();
-                    showGlobalNotification(message, room);
-                    room.lastMessageText = message.text;
-                    room.lastMessageSender = message.name;
-                    renderRoomList();
+                    if(message && message.text && message.name) { // 增加一個健壯性檢查
+                        showGlobalNotification(message, room);
+                        room.lastMessageText = message.text;
+                        room.lastMessageSender = message.name;
+                        renderRoomList();
+                    }
                 }
             });
             globalListeners[room.id] = { ref: roomRef, listener: listener };
         }
+
         function listenToAllSavedRoomsForNotifications() {
             detachAllGlobalListeners();
             savedRooms.forEach(listenToSingleRoom);
         }
+
         function joinChat(userName, password) {
             const userId = getUserId();
             const userNameRef = database.ref('usernames/' + userName);
@@ -1380,7 +1395,8 @@
                     currentUserName = userName;
                     currentUserId = userId;
                     currentRoomId = password;
-                    messagesRef = database.ref('chatrooms/' + currentRoomId);
+                    // [修正] - 將訊息參考路徑指向 'messages' 子節點
+                    messagesRef = database.ref('chatrooms/' + currentRoomId + '/messages');
                     membersRef = database.ref('chatrooms/' + currentRoomId + '/members');
                     localStorage.setItem('penpal-userName', userName);
                     const roomInfo = savedRooms.find(r => r.id === currentRoomId);
