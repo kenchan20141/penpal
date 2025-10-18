@@ -1399,7 +1399,7 @@
                     addMemberToRoom(currentRoomId, currentUserName, currentUserId);
                     listenForMessages();
                     listenForMemberList();
-                    messageInput.focus();
+                    // messageInput.focus(); // 將此行註解或刪除
                 }
             });
         }
@@ -1443,6 +1443,7 @@
         }
         
         // [MODIFIED] Startup logic is simplified.
+       // --- 應用程式啟動邏輯 ---
         async function startChatApp() {
             passwordOverlay.style.display = 'none';
             mainContainer.style.display = 'flex';
@@ -1452,10 +1453,10 @@
                 userNameInput.value = storedUserName;
             }
             loadRoomsFromStorage();
-            renderRoomList(); // Render immediately with stored data.
+            renderRoomList();
             requestNotificationPermission();
-            listenToAllSavedRoomsForNotifications(); // This will fetch and listen for last messages in real-time.
-            userNameInput.focus();
+            listenToAllSavedRoomsForNotifications();
+            // userNameInput.focus(); // 將此行註解或刪除
         }
 
         function verifyPassword() {
