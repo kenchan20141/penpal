@@ -489,6 +489,27 @@
             height: 24px;
             fill: var(--primary-color);
         }
+
+        /* --- [新增] 新留言分隔線樣式 --- */
+        .new-messages-separator {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            margin: 20px 5px;
+            color: var(--subtle-text-color);
+        }
+        .new-messages-separator::before,
+        .new-messages-separator::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .new-messages-separator span {
+            padding: 0 15px;
+            font-size: 13px;
+            font-family: var(--font-family);
+        }
+        
         /* --- 成員列表彈出視窗 --- */
         .modal {
             display: none;
@@ -1050,28 +1071,71 @@
             chatMessages.appendChild(messageGroup);
             return messageGroup;
         }
+        
+        // --- [修訂後] 訊息讀取與捲動邏輯 ---
         function listenForMessages() {
             if (messagesRef) {
                 chatMessages.innerHTML = '';
+                const lastReadMessageId = localStorage.getItem(`lastReadMsg_${currentRoomId}`);
+                let firstUnreadElement = null;
+                let lastReadMessageFound = !lastReadMessageId; 
+
                 const scrollToBottom = () => {
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                    setTimeout(() => chatMessages.scrollTop = chatMessages.scrollHeight, 0);
                 };
+
+                const scrollToFirstUnread = () => {
+                    if (firstUnreadElement) {
+                        // --- [新增] 創建並插入「新留言」分隔線 ---
+                        const separator = document.createElement('div');
+                        separator.className = 'new-messages-separator';
+                        separator.innerHTML = '<span>新留言</span>';
+                        chatMessages.insertBefore(separator, firstUnreadElement);
+                        // --- [新增] 結束 ---
+
+                        separator.scrollIntoView({ behavior: 'auto', block: 'center' });
+
+                        firstUnreadElement.style.transition = 'background-color 0.5s';
+                        firstUnreadElement.style.backgroundColor = 'rgba(96, 125, 139, 0.1)';
+                        setTimeout(() => {
+                            firstUnreadElement.style.backgroundColor = '';
+                        }, 2000);
+                    } else {
+                        scrollToBottom();
+                    }
+                };
+                
                 messagesRef.on('child_added', snapshot => {
                     const message = snapshot.val();
                     const messageId = snapshot.key;
                     if(message) {
-                        displayMessage(message, messageId);
+                        const messageElement = displayMessage(message, messageId);
+
+                        if (!lastReadMessageFound) {
+                            if (messageId === lastReadMessageId) {
+                                lastReadMessageFound = true; 
+                            }
+                        } else if (!firstUnreadElement) {
+                            firstUnreadElement = messageElement;
+                        }
+
+                        const isNearBottom = chatMessages.scrollHeight - chatMessages.clientHeight - chatMessages.scrollTop < 100;
+                        if (isNearBottom) {
+                            scrollToBottom();
+                        }
+                        
                         if (message.userId !== currentUserId) {
                              showChatNotification(message);
                         }
-                        scrollToBottom();
                     }
                 });
+
                 messagesRef.once('value', () => {
-                    setTimeout(scrollToBottom, 0);
+                    setTimeout(scrollToFirstUnread, 100);
                 });
             }
         }
+
         function stopListeningForMessages() {
             if (messagesRef) messagesRef.off();
         }
@@ -1155,7 +1219,7 @@
             memberModal.style.display = "none";
         }
 
-        // --- 修訂：個人資料功能（從 Firebase 讀寫）---
+        // --- 個人資料功能（從 Firebase 讀寫）---
         function openProfileModal(isEditing = false, targetUserId = null, targetUserName = null) {
             const userId = isEditing ? currentUserId : targetUserId;
             const userName = isEditing ? currentUserName : targetUserName;
@@ -1349,6 +1413,14 @@
             joinChat(userName, password);
         }
         function logout() {
+            if (currentRoomId && chatMessages.lastElementChild) {
+                const lastMessageElementId = chatMessages.lastElementChild.id;
+                if (lastMessageElementId && lastMessageElementId.startsWith('msg-')) {
+                    const lastMessageId = lastMessageElementId.substring(4);
+                    localStorage.setItem(`lastReadMsg_${currentRoomId}`, lastMessageId);
+                }
+            }
+            
             stopListeningForMessages();
             stopListeningForMemberList();
             if (currentRoomId && currentUserName) {
@@ -1450,6 +1522,17 @@
                 verifyPassword();
             }
         });
+
+        window.addEventListener('beforeunload', () => {
+            if (currentRoomId && chatMessages.lastElementChild) {
+                const lastMessageElementId = chatMessages.lastElementChild.id;
+                if (lastMessageElementId && lastMessageElementId.startsWith('msg-')) {
+                    const lastMessageId = lastMessageElementId.substring(4);
+                    localStorage.setItem(`lastReadMsg_${currentRoomId}`, lastMessageId);
+                }
+            }
+        });
+        
         // --- 初始化 ---
         document.addEventListener('DOMContentLoaded', initializeApp);
     </script>
