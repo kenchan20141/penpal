@@ -953,28 +953,9 @@
                 roomList.appendChild(li);
             });
         }
-        async function updateAndRenderRoomList() {
-            const fetchPromises = savedRooms.map(room => {
-                // [MODIFIED] 改為使用 orderByChild('timestamp') 以確保基於伺服器時間戳可靠地獲取最後一則訊息，解決裝置間的顯示不一致問題。
-                return database.ref('chatrooms/' + room.id).orderByChild('timestamp').limitToLast(1).once('value').then(snapshot => {
-                    if (snapshot.exists()) {
-                        const [messageId] = Object.keys(snapshot.val());
-                        const message = snapshot.val()[messageId];
-                        room.lastMessageText = message.text;
-                        room.lastMessageSender = message.name;
-                    } else {
-                        room.lastMessageText = null;
-                        room.lastMessageSender = null;
-                    }
-                }).catch(error => {
-                    console.error(`為群組 ${room.id} 讀取最後訊息時發生錯誤:`, error);
-                    room.lastMessageText = null;
-                    room.lastMessageSender = null;
-                });
-            });
-            await Promise.all(fetchPromises);
-            renderRoomList();
-        }
+
+        // [REMOVED] The updateAndRenderRoomList function is now removed. Its functionality is merged into the new real-time listener.
+
         function addOrUpdateRoom(roomId, roomName, userName) {
             let existingRoom = savedRooms.find(r => r.id === roomId);
             if (existingRoom) {
@@ -985,8 +966,8 @@
                 savedRooms.push(existingRoom);
             }
             saveRoomsToStorage();
-            listenToSingleRoom(existingRoom);
-            updateAndRenderRoomList();
+            listenToSingleRoom(existingRoom); // Attach the real-time listener for this room.
+            renderRoomList(); // Re-render to immediately show the name change. The listener will fill in the message.
         }
         
         const editIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" /></svg>`;
@@ -1077,7 +1058,6 @@
             return messageGroup;
         }
         
-        // --- [修訂後] 訊息讀取與捲動邏輯 ---
         function listenForMessages() {
             if (messagesRef) {
                 chatMessages.innerHTML = '';
@@ -1091,12 +1071,10 @@
 
                 const scrollToFirstUnread = () => {
                     if (firstUnreadElement) {
-                        // --- [新增] 創建並插入「新留言」分隔線 ---
                         const separator = document.createElement('div');
                         separator.className = 'new-messages-separator';
                         separator.innerHTML = '<span>新留言</span>';
                         chatMessages.insertBefore(separator, firstUnreadElement);
-                        // --- [新增] 結束 ---
 
                         separator.scrollIntoView({ behavior: 'auto', block: 'center' });
 
@@ -1154,14 +1132,7 @@
                     timestamp: firebase.database.ServerValue.TIMESTAMP,
                     userId: currentUserId
                 };
-                messagesRef.push(messageData).then(() => {
-                    const roomInList = savedRooms.find(r => r.id === currentRoomId);
-                    if (roomInList) {
-                        roomInList.lastMessageText = messageText;
-                        roomInList.lastMessageSender = currentUserName;
-                        renderRoomList();
-                    }
-                }).catch(error => {
+                messagesRef.push(messageData).catch(error => {
                      console.error("訊息發送失敗:", error);
                      alert("無法發送訊息，可能是權限問題或網絡連線中斷。");
                 });
@@ -1224,7 +1195,6 @@
             memberModal.style.display = "none";
         }
 
-        // --- 個人資料功能（從 Firebase 讀寫）---
         function openProfileModal(isEditing = false, targetUserId = null, targetUserName = null) {
             const userId = isEditing ? currentUserId : targetUserId;
             const userName = isEditing ? currentUserName : targetUserName;
@@ -1264,7 +1234,6 @@
 
             profileModal.style.display = "block";
         }
-
 
         function closeProfileModal() {
             profileModal.style.display = "none";
@@ -1325,13 +1294,16 @@
                 };
             }
         }
+        
+        // [MODIFIED] The listener detachment function is updated for the new listener type.
         function detachSingleGlobalListener(roomId) {
              if (globalListeners[roomId]) {
                 const { ref, listener } = globalListeners[roomId];
-                ref.off('child_added', listener);
+                ref.off('value', listener); // Use 'value' as the event type
                 delete globalListeners[roomId];
             }
         }
+
         function detachSingleMemberListener(roomId) {
              if (memberListeners[roomId]) {
                 const ref = database.ref('chatrooms/' + roomId + '/members');
@@ -1345,21 +1317,48 @@
         function detachAllMemberListeners() {
             Object.keys(memberListeners).forEach(detachSingleMemberListener);
         }
+
+        // [MODIFIED] This function is now the single source of truth for fetching and listening to last message updates.
         function listenToSingleRoom(room) {
-            detachSingleGlobalListener(room.id);
-            const now = Date.now();
-            const roomRef = database.ref('chatrooms/' + room.id);
-            const listener = roomRef.orderByChild('timestamp').startAt(now).on('child_added', (snapshot) => {
-                if (room.id !== currentRoomId) {
-                    const message = snapshot.val();
-                    showGlobalNotification(message, room);
-                    room.lastMessageText = message.text;
-                    room.lastMessageSender = message.name;
-                    renderRoomList();
+            detachSingleGlobalListener(room.id); 
+
+            const lastMessageQuery = database.ref('chatrooms/' + room.id).orderByChild('timestamp').limitToLast(1);
+            
+            const listener = lastMessageQuery.on('value', (snapshot) => {
+                let message = null;
+                if (snapshot.exists()) {
+                    const snapshotVal = snapshot.val();
+                    const messageId = Object.keys(snapshotVal)[0];
+                    message = snapshotVal[messageId];
                 }
+
+                const roomToUpdate = savedRooms.find(r => r.id === room.id);
+                if (roomToUpdate) {
+                    if (message) {
+                        if (roomToUpdate.lastMessageText !== message.text || roomToUpdate.lastMessageSender !== message.name) {
+                            roomToUpdate.lastMessageText = message.text;
+                            roomToUpdate.lastMessageSender = message.name;
+                            renderRoomList();
+                        }
+                    } else {
+                        if (roomToUpdate.lastMessageText !== null) {
+                            roomToUpdate.lastMessageText = null;
+                            roomToUpdate.lastMessageSender = null;
+                            renderRoomList();
+                        }
+                    }
+                }
+                
+                if (message && message.timestamp > (Date.now() - 5000) && room.id !== currentRoomId) {
+                     showGlobalNotification(message, room);
+                }
+            }, (error) => {
+                console.error(`Listener error for room ${room.id}:`, error);
             });
-            globalListeners[room.id] = { ref: roomRef, listener: listener };
+
+            globalListeners[room.id] = { ref: lastMessageQuery, listener: listener };
         }
+
         function listenToAllSavedRoomsForNotifications() {
             detachAllGlobalListeners();
             savedRooms.forEach(listenToSingleRoom);
@@ -1438,11 +1437,12 @@
             loginScreen.style.display = 'flex';
             roomPasswordInput.value = '';
             errorMessage.textContent = '';
-            updateAndRenderRoomList();
+            // [MODIFIED] No longer need updateAndRenderRoomList. The next function re-establishes all real-time listeners.
             listenToAllSavedRoomsForNotifications();
             roomPasswordInput.focus();
         }
-        // --- 應用程式啟動邏輯 ---
+        
+        // [MODIFIED] Startup logic is simplified.
         async function startChatApp() {
             passwordOverlay.style.display = 'none';
             mainContainer.style.display = 'flex';
@@ -1452,11 +1452,12 @@
                 userNameInput.value = storedUserName;
             }
             loadRoomsFromStorage();
-            await updateAndRenderRoomList();
+            renderRoomList(); // Render immediately with stored data.
             requestNotificationPermission();
-            listenToAllSavedRoomsForNotifications();
+            listenToAllSavedRoomsForNotifications(); // This will fetch and listen for last messages in real-time.
             userNameInput.focus();
         }
+
         function verifyPassword() {
             const enteredPassword = sitePasswordInput.value.trim();
             if (!enteredPassword) {
@@ -1513,14 +1514,12 @@
             }
         });
 
-        // 個人資料事件監聽
         userProfileButton.addEventListener('click', () => {
             openProfileModal(true);
         });
         saveProfileBtn.addEventListener('click', saveProfile);
         closeProfileBtns.forEach(btn => btn.addEventListener('click', closeProfileModal));
 
-        // 密碼驗證畫面的事件監聽
         sitePasswordSubmit.addEventListener('click', verifyPassword);
         sitePasswordInput.addEventListener('keyup', (event) => {
             if (event.key === 'Enter') {
