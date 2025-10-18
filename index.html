@@ -1439,7 +1439,7 @@
             errorMessage.textContent = '';
             // [MODIFIED] No longer need updateAndRenderRoomList. The next function re-establishes all real-time listeners.
             listenToAllSavedRoomsForNotifications();
-            roomPasswordInput.focus();
+           // roomPasswordInput.focus(); // 將此行註解或刪除
         }
         
         // [MODIFIED] Startup logic is simplified.
@@ -1494,7 +1494,7 @@
             } else {
                 passwordOverlay.style.display = 'flex';
                 mainContainer.style.display = 'none';
-                sitePasswordInput.focus();
+              // sitePasswordInput.focus(); // 將此行註解或刪除
             }
         }
         // --- 事件監聽 ---
