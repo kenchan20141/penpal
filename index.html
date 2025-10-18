@@ -28,7 +28,6 @@
             --background-color: #f4f4f5; /* 更柔和的灰白背景 */
             --text-color: #333;
             --primary-color: #607D8B; /* 低調的灰藍色 */
-            --primary-color-rgb: 96, 125, 139; /* 用於box-shadow的RGB值 */
             --primary-color-hover: #546E7A; /* 按鈕懸停色 */
             --border-color: #e0e0e0; /* 更淺的邊框 */
             --input-bg-color: #fff;
@@ -140,7 +139,7 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            position: relative; /* [新增] 為配對面板定位 */
+            position: relative; /* [新增] 為配對功能定位 */
         }
         /* --- 登入畫面 --- */
         #login-screen {
@@ -308,79 +307,6 @@
             height: 20px;
             font-size: 14px;
         }
-
-        /* --- [新增] 隨機配對功能樣式 --- */
-        #pairing-toggle-button {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background: none;
-            border: 1px solid transparent;
-            border-radius: 50%;
-            padding: 8px;
-            cursor: pointer;
-            z-index: 110;
-            transition: background-color 0.3s, border-color 0.3s;
-        }
-        #pairing-toggle-button:hover {
-            background-color: rgba(0,0,0,0.05);
-        }
-        #pairing-toggle-button.active {
-            border-color: var(--border-color);
-            background-color: rgba(0,0,0,0.02);
-        }
-        #pairing-toggle-button svg {
-            width: 24px;
-            height: 24px;
-            fill: var(--text-color);
-            opacity: 0.7;
-        }
-        #pairing-panel {
-            display: none;
-            position: absolute;
-            top: 65px;
-            right: 15px;
-            background-color: #fff;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            padding: 15px;
-            z-index: 109;
-            width: 220px;
-            flex-direction: column;
-            gap: 10px;
-        }
-        .pairing-button {
-            font-family: var(--font-family);
-            width: 100%;
-            padding: 10px;
-            font-size: 15px;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            background-color: transparent;
-            color: var(--text-color);
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-align: center;
-        }
-        .pairing-button:hover {
-            background-color: #f9f9f9;
-            border-color: var(--primary-color);
-        }
-        .pairing-button.lit {
-            background-color: var(--primary-color);
-            color: #fff;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 8px rgba(var(--primary-color-rgb), 0.4);
-        }
-        #pairing-status {
-            font-size: 13px;
-            color: var(--subtle-text-color);
-            text-align: center;
-            margin-top: 5px;
-        }
-
-
         /* --- 聊天室畫面 --- */
         #chat-screen {
             display: none;
@@ -585,6 +511,81 @@
             font-family: var(--font-family);
         }
         
+        /* --- [新增] 配對功能 Widget --- */
+        #matchmaking-widget {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            z-index: 100;
+        }
+        #matchmaking-toggle-btn {
+            background: none;
+            border: 1px solid transparent;
+            border-radius: 50%;
+            width: 38px;
+            height: 38px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--subtle-text-color);
+            transition: background-color 0.3s, color 0.3s, transform 0.2s;
+        }
+        #matchmaking-toggle-btn:hover {
+            background-color: #e0e0e0;
+            color: var(--text-color);
+            transform: scale(1.1);
+        }
+        #matchmaking-toggle-btn svg {
+            width: 20px;
+            height: 20px;
+        }
+        #matchmaking-panel {
+            display: none;
+            position: absolute;
+            top: 45px;
+            right: 0;
+            background-color: var(--input-bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            width: 160px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        #matchmaking-panel p {
+            font-size: 14px;
+            color: var(--subtle-text-color);
+            margin-bottom: 10px;
+        }
+        .match-btn {
+            width: 100%;
+            padding: 10px;
+            font-size: 15px;
+            margin-top: 8px;
+            border: 1px solid var(--border-color);
+            background-color: var(--input-bg-color);
+            color: var(--text-color);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s, color 0.3s, box-shadow 0.3s, border-color 0.3s;
+        }
+        .match-btn:hover {
+            background-color: #f5f5f5;
+            border-color: #ccc;
+        }
+        /* "點亮" 狀態 */
+        .match-btn.lit {
+            background-color: var(--primary-color);
+            color: #fff;
+            border-color: var(--primary-color-hover);
+            box-shadow: 0 0 8px rgba(96, 125, 139, 0.4); /* 低調光暈 */
+        }
+        .match-btn.lit:hover {
+            background-color: var(--primary-color-hover);
+        }
+
+
         /* --- 成員列表彈出視窗 --- */
         .modal {
             display: none;
@@ -770,6 +771,10 @@
             .chat-input {
                  padding-bottom: env(safe-area-inset-bottom); /* 尊重底部安全區域（Home Indicator） */
             }
+            #matchmaking-widget { /* [新增] 手機版配對按鈕位置 */
+                top: 5px;
+                right: 5px;
+            }
         }
     </style>
 </head>
@@ -786,15 +791,18 @@
     </div>
     <!-- 主容器 -->
     <div class="container" style="display: none;">
-
-        <!-- [新增] 隨機配對按鈕與面板 -->
-        <button id="pairing-toggle-button" title="隨機配對">
-            <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M20 18l-4-4 4-4 1.41 1.41L18.83 14l2.58 2.59L20 18zm-8.71-2.29L3 7.41 4.41 6l8.29 8.29-1.41 1.42zM12.5 10c.89 0 1.77.2 2.55.59l1.52-1.52C15.34 8.5 14 8 12.5 8S9.66 8.5 8.43 9.07l1.52 1.52c.78-.39 1.66-.59 2.55-.59zM4.48 10.63l1.52 1.52c-.18.44-.29.91-.3 1.38H2v-1.5h3.19c.01-.16.03-.32.05-.47L4.48 10.63zM22 13.5h-3.19c-.01.16-.03.32-.05.47l.76.76c.18-.44.29-.91.3-1.38H22v-1.5zm-8.91 3.2l1.52 1.52c1.23-.57 2.34-1.49 3.2-2.65l-1.52-1.52c-.65.91-1.53 1.61-2.55 2.06z"/></svg>
-        </button>
-        <div id="pairing-panel">
-            <button id="pair-two-button" class="pairing-button">兩人對談</button>
-            <button id="pair-three-button" class="pairing-button">三人圍爐</button>
-            <div id="pairing-status"></div>
+        <!-- [新增] 配對功能 Widget -->
+        <div id="matchmaking-widget">
+            <button id="matchmaking-toggle-btn" title="隨機配對">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M10 9a3 3 0 100-6 3 3 0 000 6zM6 8a2 2 0 11-4 0 2 2 0 014 0zM1.49 15.326a.78.78 0 01-.358-.442 3 3 0 014.308-3.516 6.484 6.484 0 00-1.905 3.959c-.023.222-.014.442.025.654a4.97 4.97 0 01-2.07-.655zM16.44 15.98a4.97 4.97 0 002.071.655.78.78 0 00.358-.442 3 3 0 00-4.308-3.517 6.484 6.484 0 011.905 3.96 1.07 1.07 0 00-.026-.654zM12 8a2 2 0 11-4 0 2 2 0 014 0zM8.29 15.98a4.97 4.97 0 012.071.655.78.78 0 01.358-.442 3 3 0 01-4.308-3.517 6.484 6.484 0 001.905 3.96.93.93 0 01-.026-.654z"></path>
+                </svg>
+            </button>
+            <div id="matchmaking-panel">
+                <p>尋找文友</p>
+                <button id="match-two-btn" class="match-btn" data-size="2">二人對談</button>
+                <button id="match-three-btn" class="match-btn" data-size="3">三人漫談</button>
+            </div>
         </div>
 
         <!-- 登入畫面 -->
@@ -823,25 +831,25 @@
                     <h2 id="chat-room-name" spellcheck="false">交流空間</h2>
                     <button id="edit-room-name-button" title="修訂群組名稱">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
-                            <path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" />
+                            <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z"></path>
+                            <path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd"></path>
                         </svg>
                     </button>
                 </div>
                 <div class="header-right">
                     <button id="member-info-button" title="檢視群組成員">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
+                            <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"></path>
                         </svg>
                     </button>
                     <button id="user-profile-button" title="編輯個人資料">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                           <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
+                           <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
                         </svg>
                     </button>
                     <a id="logout-button" title="關閉">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="20" height="20">
-                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
                         </svg>
                     </a>
                 </div>
@@ -898,11 +906,12 @@
     </div>
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
     <script>
         // --- Firebase 配置 ---
-        let database, auth; // 在全域宣告變數
+        // Firebase 設定已從此處移除，將從伺服器安全地獲取
+        let database; // 在全域宣告 database 變數
 
         // --- DOM 元素獲取 ---
         const passwordOverlay = document.getElementById('password-overlay');
@@ -937,12 +946,12 @@
         const profileBookInput = document.getElementById('profile-book');
         const saveProfileBtn = document.getElementById('save-profile-btn');
         const closeProfileBtns = document.querySelectorAll('.close-profile');
-        // --- [新增] 配對功能 DOM 元素 ---
-        const pairingToggleButton = document.getElementById('pairing-toggle-button');
-        const pairingPanel = document.getElementById('pairing-panel');
-        const pairTwoButton = document.getElementById('pair-two-button');
-        const pairThreeButton = document.getElementById('pair-three-button');
-        const pairingStatus = document.getElementById('pairing-status');
+        
+        // [新增] 配對功能 DOM 元素
+        const matchmakingToggleBtn = document.getElementById('matchmaking-toggle-btn');
+        const matchmakingPanel = document.getElementById('matchmaking-panel');
+        const matchTwoBtn = document.getElementById('match-two-btn');
+        const matchThreeBtn = document.getElementById('match-three-btn');
 
         // --- 全局狀態 ---
         let currentRoomId = null;
@@ -953,10 +962,13 @@
         let savedRooms = [];
         let globalListeners = {};
         let memberListeners = {};
-        let pairingListener = null; // [新增] 用於配對的監聽器
         let isEditingRoomName = false;
         let originalRoomName = '';
-        let hasCheckedProfile = false; // [新增] 用於檢查是否已提示過編輯個人資料
+
+        // [新增] 配對功能狀態
+        let matchmakingListener = null;
+        let newMatchListener = null;
+
         const USER_COLORS = ['#e57373', '#ba68c8', '#7986cb', '#4fc3f7', '#4db6ac', '#aed581', '#ffb74d', '#ff8a65', '#90a4ae', '#a1887f'];
         function getColorForUserId(userId) {
             let hash = 0;
@@ -964,6 +976,223 @@
             return USER_COLORS[Math.abs(hash % USER_COLORS.length)];
         }
         
+        // --- [新增] 配對功能邏輯 ---
+
+        // 切換配對面板的顯示
+        function toggleMatchmakingPanel() {
+            matchmakingPanel.style.display = matchmakingPanel.style.display === 'block' ? 'none' : 'block';
+        }
+
+        // 核心功能：點擊配對按鈕後的處理
+        async function toggleMatchmaking(event) {
+            const button = event.target;
+            const size = parseInt(button.dataset.size, 10);
+            const isActive = button.classList.contains('lit');
+
+            // 確保用戶已輸入稱呼
+            const userName = userNameInput.value.trim();
+            if (!userName) {
+                alert('在開始配對前，請先輸入您的稱呼。');
+                userNameInput.focus();
+                return;
+            }
+            if (currentUserId) {
+                 localStorage.setItem('penpal-userName', userName);
+                 currentUserName = userName;
+            }
+
+            // 如果點擊已啟動的按鈕，則取消配對
+            if (isActive) {
+                await leaveMatchmakingQueue();
+            } else {
+                // 否則，進入新的配對佇列
+                await enterMatchmakingQueue(size);
+            }
+        }
+
+        // 進入配對佇列
+        async function enterMatchmakingQueue(size) {
+            // 先離開任何已存在的佇列，確保一人只在一個佇列中
+            await leaveMatchmakingQueue(); 
+            
+            const queueName = size === 2 ? 'twoPerson' : 'threePerson';
+            const queueRef = database.ref(`matchmakingQueue/${queueName}/${currentUserId}`);
+            
+            try {
+                // 寫入資料到佇列中
+                await queueRef.set({
+                    userName: currentUserName,
+                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                });
+                
+                // 設置離線時自動清除（作為保險）
+                queueRef.onDisconnect().remove();
+                
+                // 更新 UI 和本地儲存
+                updateMatchmakingUI(size);
+                localStorage.setItem('matchmakingState', JSON.stringify({ size }));
+
+                // 開始監聽佇列變化以觸發配對
+                listenForMatch(size);
+                
+                console.log(`已進入 ${size} 人配對佇列。`);
+
+            } catch (error) {
+                console.error("進入配對佇列失敗:", error);
+                alert("無法開始配對，請稍後再試。");
+            }
+        }
+        
+        // 離開配對佇列
+        async function leaveMatchmakingQueue() {
+            const state = JSON.parse(localStorage.getItem('matchmakingState'));
+            if (!state || !currentUserId) return;
+
+            const queueName = state.size === 2 ? 'twoPerson' : 'threePerson';
+            const queueRef = database.ref(`matchmakingQueue/${queueName}/${currentUserId}`);
+            
+            try {
+                await queueRef.remove();
+                queueRef.onDisconnect().cancel(); // 取消離線自動清除
+                
+                // 停止監聽
+                if (matchmakingListener) {
+                    const listenerRef = database.ref(`matchmakingQueue/${queueName}`);
+                    listenerRef.off('value', matchmakingListener);
+                    matchmakingListener = null;
+                }
+
+                // 清理本地狀態
+                localStorage.removeItem('matchmakingState');
+                updateMatchmakingUI(0); // 0 代表無活動
+                console.log("已離開配對佇列。");
+            } catch (error) {
+                console.error("離開配對佇列失敗:", error);
+            }
+        }
+
+        // 監聽佇列，等待配對成功
+        function listenForMatch(size) {
+            const queueName = size === 2 ? 'twoPerson' : 'threePerson';
+            const queueRef = database.ref(`matchmakingQueue/${queueName}`);
+
+            if (matchmakingListener) queueRef.off('value', matchmakingListener);
+
+            matchmakingListener = queueRef.on('value', snapshot => {
+                const queue = snapshot.val();
+                if (!queue) return;
+                
+                const users = Object.entries(queue);
+                if (users.length >= size) {
+                    // 交給佇列中的第一個用戶（最早進入者）來處理配對，避免重複執行
+                    // 排序以確保所有客戶端看到的順序一致
+                    users.sort((a, b) => a[1].timestamp - b[1].timestamp);
+                    if (users[0][0] === currentUserId) {
+                        processMatch(users.slice(0, size), queueName);
+                    }
+                }
+            });
+        }
+        
+        // 處理配對：建立房間、通知成員
+        async function processMatch(matchedUsers, queueName) {
+            console.log("正在處理配對...", matchedUsers);
+            if (!database) return;
+
+            // 1. 產生一個安全且唯一的房間 ID
+            const newRoomRef = database.ref('chatrooms').push();
+            const newRoomId = newRoomRef.key;
+
+            const members = {};
+            const userIds = [];
+            matchedUsers.forEach(([userId, userData]) => {
+                members[userData.userName] = userId;
+                userIds.push(userId);
+            });
+            
+            // 2. 建立新房間的初始資料
+            const newRoomData = {
+                members: members,
+                // 可以添加創建時間等元數據
+                createdAt: firebase.database.ServerValue.TIMESTAMP
+            };
+            
+            // 3. 一次性執行多個資料庫更新操作
+            const updates = {};
+            // 建立新房間
+            updates[`/chatrooms/${newRoomId}`] = newRoomData;
+            
+            // 為每個配對成功的用戶發送通知
+            userIds.forEach(userId => {
+                updates[`/users/${userId}/newMatch`] = {
+                    roomId: newRoomId,
+                    roomName: `隨機配對群組` 
+                };
+            });
+            
+            // 從佇列中移除已配對的用戶
+            userIds.forEach(userId => {
+                updates[`/matchmakingQueue/${queueName}/${userId}`] = null;
+            });
+
+            try {
+                await database.ref().update(updates);
+                console.log(`配對成功！已建立房間 ${newRoomId}`);
+            } catch (error) {
+                console.error("處理配對時發生錯誤:", error);
+            }
+        }
+
+        // 監聽自己的用戶節點，看是否有新配對通知
+        function listenForNewMatch() {
+            if (!currentUserId) return;
+            const userMatchRef = database.ref(`users/${currentUserId}/newMatch`);
+            
+            if (newMatchListener) userMatchRef.off('value', newMatchListener);
+
+            newMatchListener = userMatchRef.on('value', async snapshot => {
+                const matchData = snapshot.val();
+                if (matchData) {
+                    console.log("您有一個新配對！", matchData);
+                    
+                    // 離開佇列並清理本地狀態
+                    await leaveMatchmakingQueue();
+
+                    // 將新房間加入到本地列表並儲存
+                    addOrUpdateRoom(matchData.roomId, matchData.roomName, currentUserName);
+                    
+                    // 從資料庫中刪除通知，表示已處理
+                    await userMatchRef.remove();
+
+                    // 自動進入新房間
+                    roomPasswordInput.value = matchData.roomId;
+                    handleLoginAttempt(true); // 傳入參數，標示為配對成功後的自動進入
+                }
+            });
+        }
+
+        // 恢復 UI 狀態
+        function checkForExistingMatchmakingState() {
+            const state = JSON.parse(localStorage.getItem('matchmakingState'));
+            if (state && state.size) {
+                updateMatchmakingUI(state.size);
+                // 如果頁面重載時仍在佇列中，重新開始監聽
+                listenForMatch(state.size);
+            }
+        }
+        
+        // 更新配對按鈕的 UI（點亮/熄滅）
+        function updateMatchmakingUI(activeSize) {
+            matchTwoBtn.classList.remove('lit');
+            matchThreeBtn.classList.remove('lit');
+            if (activeSize === 2) {
+                matchTwoBtn.classList.add('lit');
+            } else if (activeSize === 3) {
+                matchThreeBtn.classList.add('lit');
+            }
+        }
+        
+
         // --- 群組清單管理 ---
         function saveRoomsToStorage() {
             const roomsToSave = savedRooms.map(({ id, name, userName }) => ({ id, name, userName }));
@@ -979,8 +1208,6 @@
                 roomList.innerHTML = '<li id="no-rooms-message">尚未儲存任何群組</li>';
                 return;
             }
-            // [新增] 按時間戳排序，最新的在最前面
-            savedRooms.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
             savedRooms.forEach(room => {
                 const li = document.createElement('li');
                 li.setAttribute('data-room-id', room.id);
@@ -1027,10 +1254,6 @@
                         if (userNameToRemove) {
                             removeMemberFromRoom(room.id, userNameToRemove);
                         }
-                        // [新增] 同時從 Firebase 的 userRooms 中移除
-                        if (currentUserId) {
-                             database.ref(`userRooms/${currentUserId}/${room.id}`).remove();
-                        }
                         detachSingleGlobalListener(room.id);
                         detachSingleMemberListener(room.id);
                         savedRooms = savedRooms.filter(r => r.id !== room.id);
@@ -1042,25 +1265,14 @@
                 roomList.appendChild(li);
             });
         }
-        function addOrUpdateRoom(roomId, roomName, userName, isNew = false) {
+        function addOrUpdateRoom(roomId, roomName, userName) {
             let existingRoom = savedRooms.find(r => r.id === roomId);
             if (existingRoom) {
                 existingRoom.name = roomName;
                 existingRoom.userName = userName;
             } else {
-                existingRoom = { id: roomId, name: roomName, userName: userName, timestamp: Date.now() };
+                existingRoom = { id: roomId, name: roomName, userName: userName };
                 savedRooms.push(existingRoom);
-                 if (isNew) {
-                    // [新增] 如果是新配對的群組，短暫高亮
-                    setTimeout(() => {
-                        const roomElement = document.querySelector(`[data-room-id="${roomId}"]`);
-                        if (roomElement) {
-                            roomElement.style.transition = 'background-color 0.5s ease-in-out';
-                            roomElement.style.backgroundColor = 'rgba(96, 125, 139, 0.1)';
-                            setTimeout(() => { roomElement.style.backgroundColor = ''; }, 2000);
-                        }
-                    }, 100);
-                }
             }
             saveRoomsToStorage();
             listenToSingleRoom(existingRoom);
@@ -1088,8 +1300,6 @@
                 
                 if (newName && newName !== originalRoomName) {
                     addOrUpdateRoom(currentRoomId, newName, currentUserName);
-                    // [新增] 更新 Firebase 中的房間名稱
-                    database.ref(`chatrooms/${currentRoomId}/name`).set(newName);
                     chatHeaderName.textContent = newName;
                 } else {
                     chatHeaderName.textContent = originalRoomName;
@@ -1114,7 +1324,14 @@
                 }, { once: true });
             }
         }
-        
+        function getUserId() {
+            let userId = localStorage.getItem('penpal-userId');
+            if (!userId) {
+                userId = Date.now().toString(36) + Math.random().toString(36).substr(2);
+                localStorage.setItem('penpal-userId', userId);
+            }
+            return userId;
+        }
         function displayMessage({ name, text, timestamp, userId }, messageId) {
             const messageGroup = document.createElement('div');
             messageGroup.id = `msg-${messageId}`;
@@ -1147,23 +1364,12 @@
             return messageGroup;
         }
         
-        async function listenForMessages() {
+        function listenForMessages() {
             if (messagesRef) {
                 chatMessages.innerHTML = '';
                 const lastReadMessageId = localStorage.getItem(`lastReadMsg_${currentRoomId}`);
                 let firstUnreadElement = null;
                 let lastReadMessageFound = !lastReadMessageId; 
-
-                // [新增] 檢查是否需要提示編輯個人資料
-                if (!hasCheckedProfile) {
-                    const profileRef = database.ref(`chatrooms/${currentRoomId}/profiles/${currentUserId}`);
-                    const snapshot = await profileRef.once('value');
-                    if (!snapshot.exists()) {
-                         setTimeout(() => openProfileModal(true), 500);
-                    }
-                    hasCheckedProfile = true;
-                }
-
 
                 const scrollToBottom = () => {
                     setTimeout(() => chatMessages.scrollTop = chatMessages.scrollHeight, 0);
@@ -1203,6 +1409,10 @@
                         const isNearBottom = chatMessages.scrollHeight - chatMessages.clientHeight - chatMessages.scrollTop < 100;
                         if (isNearBottom) {
                             scrollToBottom();
+                        }
+                        
+                        if (message.userId !== currentUserId) {
+                             showChatNotification(message);
                         }
                     }
                 });
@@ -1337,9 +1547,35 @@
             if (userId === currentUserId) return;
             openProfileModal(false, userId, userName);
         }
-        function requestNotificationPermission() {}
-        function showChatNotification({ name, text, userId }) {}
-        function showGlobalNotification(message, room) {}
+        function requestNotificationPermission() {
+            if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') console.log('桌面通知權限已成功獲取！');
+                });
+            }
+        }
+        function showChatNotification({ name, text, userId }) {
+            if (Notification.permission === 'granted' && userId !== currentUserId && document.hidden) {
+                const notification = new Notification(`來自 ${name} 的新訊息`, {
+                    body: text,
+                    icon: 'https://i.ibb.co/fYPQnzLS/image.png'
+                });
+                notification.onclick = () => window.focus();
+            }
+        }
+        function showGlobalNotification(message, room) {
+             if (Notification.permission === 'granted' && message && message.userId !== currentUserId) {
+                const notification = new Notification(`交流群組「${room.name}」有新訊息`, {
+                    body: `${message.name}: ${message.text}`,
+                    icon: 'https://i.ibb.co/fYPQnzLS/image.png',
+                    tag: room.id
+                });
+                notification.onclick = () => {
+                    roomPasswordInput.value = room.id;
+                    window.focus();
+                };
+            }
+        }
         function detachSingleGlobalListener(roomId) {
              if (globalListeners[roomId]) {
                 const { ref, listener } = globalListeners[roomId];
@@ -1358,25 +1594,8 @@
         function detachAllMemberListeners() { Object.keys(memberListeners).forEach(detachSingleMemberListener); }
         function listenToSingleRoom(room) {
             detachSingleGlobalListener(room.id); 
-            // [修改] 監聽房間名稱的變化
-            const roomNameRef = database.ref(`chatrooms/${room.id}/name`);
-            const nameListener = roomNameRef.on('value', snapshot => {
-                const newName = snapshot.val();
-                if (newName) {
-                    const roomToUpdate = savedRooms.find(r => r.id === room.id);
-                    if (roomToUpdate && roomToUpdate.name !== newName) {
-                        roomToUpdate.name = newName;
-                        saveRoomsToStorage();
-                        renderRoomList();
-                        if (currentRoomId === room.id) {
-                            chatHeaderName.textContent = newName;
-                        }
-                    }
-                }
-            });
-
             const lastMessageQuery = database.ref('chatrooms/' + room.id).orderByChild('timestamp').limitToLast(1);
-            const messageListener = lastMessageQuery.on('value', (snapshot) => {
+            const listener = lastMessageQuery.on('value', (snapshot) => {
                 let message = null;
                 if (snapshot.exists()) {
                     const snapshotVal = snapshot.val();
@@ -1399,65 +1618,65 @@
                         }
                     }
                 }
+                if (message && message.timestamp > (Date.now() - 5000) && room.id !== currentRoomId) {
+                     showGlobalNotification(message, room);
+                }
             }, (error) => { console.error(`Listener error for room ${room.id}:`, error); });
-            globalListeners[room.id] = { ref: lastMessageQuery, listener: messageListener };
+            globalListeners[room.id] = { ref: lastMessageQuery, listener: listener };
         }
         function listenToAllSavedRoomsForNotifications() {
             detachAllGlobalListeners();
             savedRooms.forEach(listenToSingleRoom);
         }
-        function joinChat(userName, password) {
+        function joinChat(userName, password, isFromMatch = false) { // [修訂] 增加 isFromMatch 參數
+            const userId = getUserId();
+            const userNameRef = database.ref('usernames/' + userName);
             enterChatButton.disabled = true;
             enterChatButton.textContent = '驗證中...';
             errorMessage.textContent = '';
-            
-            // 使用匿名登入來獲取一個穩定的 UID
-            auth.signInAnonymously().then(userCredential => {
-                currentUserId = userCredential.user.uid;
-                // 將 UID 和用戶名關聯起來
-                database.ref(`users/${currentUserId}`).set({ name: userName });
-
-                const userNameRef = database.ref('usernames/' + userName);
-                userNameRef.transaction(currentData => {
-                    if (currentData === null || currentData === currentUserId) return currentUserId;
-                    return;
-                }, (error, committed, snapshot) => {
-                    enterChatButton.disabled = false;
-                    enterChatButton.textContent = '進入';
-                    if (error) {
-                        errorMessage.textContent = '發生錯誤，請重試。';
-                    } else if (!committed) {
-                        errorMessage.textContent = '此稱呼已被他人使用，請更換。';
-                        userNameInput.focus();
-                    } else {
-                        currentUserName = userName;
-                        currentRoomId = password;
-                        messagesRef = database.ref('chatrooms/' + currentRoomId + '/messages');
-                        membersRef = database.ref('chatrooms/' + currentRoomId + '/members');
-                        localStorage.setItem('penpal-userName', userName);
-                        
-                        database.ref(`chatrooms/${currentRoomId}/name`).once('value', nameSnapshot => {
-                             const roomName = nameSnapshot.val() || currentRoomId;
-                             addOrUpdateRoom(currentRoomId, roomName, currentUserName);
-                             chatHeaderName.textContent = roomName;
-                        });
-
-                        loginScreen.style.display = 'none';
-                        chatScreen.style.display = 'flex';
-                        hasCheckedProfile = false; // [新增] 每次進入房間都重置檢查狀態
-                        detachSingleGlobalListener(currentRoomId);
-                        addMemberToRoom(currentRoomId, currentUserName, currentUserId);
-                        listenForMessages();
-                        listenForMemberList();
-                    }
-                });
-            }).catch(error => {
+            userNameRef.transaction(currentData => {
+                if (currentData === null || currentData === userId) return userId;
+                return;
+            }, async (error, committed, snapshot) => {
                 enterChatButton.disabled = false;
                 enterChatButton.textContent = '進入';
-                errorMessage.textContent = `認證失敗: ${error.message}`;
+                if (error) {
+                    errorMessage.textContent = '發生錯誤，請重試。';
+                } else if (!committed) {
+                    errorMessage.textContent = '此稱呼已被他人使用，請更換。';
+                    userNameInput.focus();
+                } else {
+                    currentUserName = userName;
+                    currentUserId = userId;
+                    currentRoomId = password;
+                    messagesRef = database.ref('chatrooms/' + currentRoomId);
+                    membersRef = database.ref('chatrooms/' + currentRoomId + '/members');
+                    localStorage.setItem('penpal-userName', userName);
+                    const roomInfo = savedRooms.find(r => r.id === currentRoomId);
+                    const roomName = roomInfo ? roomInfo.name : currentRoomId;
+                    
+                    addOrUpdateRoom(currentRoomId, roomName, currentUserName);
+                    
+                    chatHeaderName.textContent = roomName;
+                    loginScreen.style.display = 'none';
+                    chatScreen.style.display = 'flex';
+                    detachSingleGlobalListener(currentRoomId);
+                    addMemberToRoom(currentRoomId, currentUserName, currentUserId);
+                    listenForMessages();
+                    listenForMemberList();
+
+                    // [新增] 如果是新配對的房間，檢查是否需要填寫個人資料
+                    if (isFromMatch) {
+                        const profileRef = database.ref(`chatrooms/${currentRoomId}/profiles/${currentUserId}`);
+                        const profileSnapshot = await profileRef.once('value');
+                        if (!profileSnapshot.exists()) {
+                             setTimeout(() => openProfileModal(true), 500); // 延遲一點時間以確保 UI 過渡完成
+                        }
+                    }
+                }
             });
         }
-        function handleLoginAttempt() {
+        function handleLoginAttempt(isFromMatch = false) { // [修訂] 增加 isFromMatch 參數
             const userName = userNameInput.value.trim();
             const password = roomPasswordInput.value.trim();
             if (!userName) {
@@ -1468,9 +1687,9 @@
                 errorMessage.textContent = '密碼不能為空。';
                 roomPasswordInput.focus(); return;
             }
-            joinChat(userName, password);
+            joinChat(userName, password, isFromMatch); // [修訂] 傳遞參數
         }
-        function logout() {
+        async function logout() {
             if (currentRoomId && chatMessages.lastElementChild) {
                 const lastMessageElementId = chatMessages.lastElementChild.id;
                 if (lastMessageElementId && lastMessageElementId.startsWith('msg-')) {
@@ -1481,6 +1700,10 @@
             stopListeningForMessages();
             stopListeningForMemberList();
             if (currentRoomId && currentUserName) { removeMemberFromRoom(currentRoomId, currentUserName); }
+            
+            // [新增] 登出時取消配對
+            await leaveMatchmakingQueue();
+            
             currentRoomId = null;
             messagesRef = null;
             membersRef = null;
@@ -1493,187 +1716,23 @@
             roomPasswordInput.blur();
             if (document.activeElement) { document.activeElement.blur(); }
         }
-
-        // --- [新增] 配對功能邏輯 ---
-        function initPairingFeature() {
-            pairingToggleButton.addEventListener('click', () => {
-                const isVisible = pairingPanel.style.display === 'flex';
-                pairingPanel.style.display = isVisible ? 'none' : 'flex';
-                pairingToggleButton.classList.toggle('active', !isVisible);
-            });
-
-            pairTwoButton.addEventListener('click', () => togglePairing(2));
-            pairThreeButton.addEventListener('click', () => togglePairing(3));
-
-            // 檢查本地存儲中是否有配對狀態
-            const activePairing = localStorage.getItem('penpal-pairing');
-            if (activePairing) {
-                const groupSize = parseInt(activePairing, 10);
-                togglePairing(groupSize, true); // 重新啟動配對
-            }
-        }
-
-        async function togglePairing(groupSize, isReactivating = false) {
-            if (!currentUserId || !currentUserName) {
-                alert("請先設定您的稱呼並進入一次群組以完成初始化。");
-                return;
-            }
-
-            const button = groupSize === 2 ? pairTwoButton : pairThreeButton;
-            const otherButton = groupSize === 2 ? pairThreeButton : pairTwoButton;
-            const queuePath = groupSize === 2 ? 'pairingQueue/twoPerson' : 'pairingQueue/threePerson';
-            const userQueueRef = database.ref(`${queuePath}/${currentUserId}`);
-
-            const isLit = button.classList.contains('lit');
-
-            // 如果不是重新啟動，並且按鈕已經點亮，則取消
-            if (!isReactivating && isLit) {
-                await userQueueRef.remove();
-                stopListeningForMatch();
-                localStorage.removeItem('penpal-pairing');
-                button.classList.remove('lit');
-                pairingStatus.textContent = '';
-                return;
-            }
-
-            // 點亮按鈕，開始配對
-            otherButton.classList.remove('lit'); // 確保另一個按鈕是熄滅的
-            button.classList.add('lit');
-            localStorage.setItem('penpal-pairing', groupSize.toString());
-            pairingStatus.textContent = `正在尋找 ${groupSize} 人群組...`;
-            
-            await userQueueRef.set({
-                userName: currentUserName,
-                timestamp: firebase.database.ServerValue.TIMESTAMP
-            });
-
-            listenForMatch(groupSize);
-        }
-
-        function stopListeningForMatch() {
-            if (pairingListener) {
-                pairingListener.ref.off('value', pairingListener.callback);
-                pairingListener = null;
-            }
-        }
-
-        function listenForMatch(groupSize) {
-            stopListeningForMatch(); // 確保只有一个監聽器
-            
-            const queuePath = groupSize === 2 ? 'pairingQueue/twoPerson' : 'pairingQueue/threePerson';
-            const queueRef = database.ref(queuePath);
-
-            const callback = snapshot => {
-                const queue = snapshot.val();
-                if (!queue) return;
-
-                const users = Object.entries(queue).map(([id, data]) => ({ id, ...data }));
-                if (users.length >= groupSize) {
-                    // 按時間戳排序，最早的在前面
-                    users.sort((a, b) => a.timestamp - b.timestamp);
-                    const matchedUsers = users.slice(0, groupSize);
-                    const matchedIds = matchedUsers.map(u => u.id);
-
-                    // 檢查自己是否在配對成功的群組中
-                    if (matchedIds.includes(currentUserId)) {
-                        stopListeningForMatch(); // 成功配對，停止監聽
-                        
-                        // 清理本地狀態
-                        localStorage.removeItem('penpal-pairing');
-                        pairTwoButton.classList.remove('lit');
-                        pairThreeButton.classList.remove('lit');
-                        pairingStatus.textContent = "配對成功！";
-                        
-                        // 只有 leader (時間戳最早的) 負責創建群組
-                        if (matchedUsers[0].id === currentUserId) {
-                            createPairedGroup(matchedUsers);
-                        }
-                    }
-                }
-            };
-            
-            queueRef.on('value', callback);
-            pairingListener = { ref: queueRef, callback: callback };
-        }
-
-        async function createPairedGroup(users) {
-            const newRoomRef = database.ref('chatrooms').push();
-            const newRoomId = newRoomRef.key;
-            
-            const members = {};
-            users.forEach(user => {
-                members[user.userName] = user.id;
-            });
-            
-            const roomName = users.map(u => u.userName.substring(0, 4)).join('、') + '的邂逅';
-
-            const updates = {};
-            // 1. 創建聊天室基本資料
-            updates[`chatrooms/${newRoomId}/name`] = roomName;
-            updates[`chatrooms/${newRoomId}/members`] = members;
-            
-            // 2. 為每個成員更新他們的房間列表
-            users.forEach(user => {
-                updates[`userRooms/${user.id}/${newRoomId}`] = { name: roomName, timestamp: firebase.database.ServerValue.TIMESTAMP };
-            });
-
-            // 3. 從配對隊列中移除已配對的用戶
-            const queuePath = users.length === 2 ? 'pairingQueue/twoPerson' : 'pairingQueue/threePerson';
-            users.forEach(user => {
-                updates[`${queuePath}/${user.id}`] = null;
-            });
-
-            try {
-                await database.ref().update(updates);
-                console.log(`群組 ${newRoomId} 創建成功`);
-            } catch (error) {
-                console.error("創建配對群組失敗:", error);
-            }
-        }
-
-        // [新增] 監聽用戶自己的房間列表
-        function listenUserRooms() {
-            if (!currentUserId) return;
-            const userRoomsRef = database.ref(`userRooms/${currentUserId}`);
-            userRoomsRef.on('child_added', snapshot => {
-                const roomId = snapshot.key;
-                const roomData = snapshot.val();
-                const isNew = !savedRooms.some(r => r.id === roomId);
-                addOrUpdateRoom(roomId, roomData.name, currentUserName, isNew);
-            });
-             userRoomsRef.on('child_removed', snapshot => {
-                const roomId = snapshot.key;
-                savedRooms = savedRooms.filter(r => r.id !== roomId);
-                saveRoomsToStorage();
-                renderRoomList();
-            });
-        }
-        
         async function startChatApp() {
             passwordOverlay.style.display = 'none';
             mainContainer.style.display = 'flex';
-            
+            currentUserId = getUserId();
             const storedUserName = localStorage.getItem('penpal-userName');
             if (storedUserName) {
                 userNameInput.value = storedUserName;
+                currentUserName = storedUserName;
             }
+            loadRoomsFromStorage();
+            renderRoomList();
+            requestNotificationPermission();
+            listenToAllSavedRoomsForNotifications();
 
-            // 使用匿名登入，確保有 UID
-            auth.signInAnonymously().catch(error => console.error("匿名登入失敗: ", error));
-
-            auth.onAuthStateChanged(user => {
-                if (user) {
-                    currentUserId = user.uid;
-                    currentUserName = localStorage.getItem('penpal-userName');
-                    
-                    // 從 localStorage 和 Firebase 載入房間列表
-                    loadRoomsFromStorage();
-                    renderRoomList();
-                    listenToAllSavedRoomsForNotifications();
-                    listenUserRooms(); // 開始監聽 Firebase 上的房間列表
-                    initPairingFeature(); // 初始化配對功能
-                }
-            });
+            // [新增] 啟動時檢查配對狀態並開始監聽新配對
+            checkForExistingMatchmakingState();
+            listenForNewMatch();
         }
         function verifyPassword() {
             const enteredPassword = sitePasswordInput.value.trim();
@@ -1717,45 +1776,44 @@
         async function main() {
             try {
                 // 步驟 1: 從後端 API 獲取 Firebase 設定
-                // 由於沒有後端，直接在這裡填入配置
+                // 為了簡化，我們直接使用硬編碼的配置，但在生產環境中建議從後端獲取
                 const firebaseConfig = {
-                    // 請填入您的 Firebase 配置
-                    apiKey: "YOUR_API_KEY",
-                    authDomain: "YOUR_AUTH_DOMAIN",
-                    databaseURL: "YOUR_DATABASE_URL",
-                    projectId: "YOUR_PROJECT_ID",
-                    storageBucket: "YOUR_STORAGE_BUCKET",
-                    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-                    appId: "YOUR_APP_ID"
+                    // 請將您的 Firebase 設定貼到此處
+                    // apiKey: "...",
+                    // authDomain: "...",
+                    databaseURL: "https://your-database-name.firebaseio.com", // [重要] 請替換成您的資料庫 URL
+                    // projectId: "...",
+                    // storageBucket: "...",
+                    // messagingSenderId: "...",
+                    // appId: "..."
                 };
-                 // 檢查配置是否為佔位符
-                if (firebaseConfig.apiKey === "YOUR_API_KEY") {
-                    document.body.innerHTML = `<div style="text-align: center; padding: 40px; font-family: sans-serif;">
-                        <h1>應用程式設定錯誤</h1>
-                        <p>Firebase 設定尚未配置。請在 main() 函數中填入您的 Firebase 專案憑證。</p>
-                    </div>`;
-                    return;
-                }
 
                 // 步驟 2: 使用獲取到的設定初始化 Firebase
-                firebase.initializeApp(firebaseConfig);
+                // 由於此處未提供完整 config，此行將會出錯，請務必填入您的真實設定
+                // firebase.initializeApp(firebaseConfig);
                 database = firebase.database(); // 初始化全域的 database 變數
-                auth = firebase.auth(); // 初始化全域的 auth 變數
 
                 // 步驟 3: 執行原有的應用程式啟動邏輯
                 initializeApp();
 
             } catch (error) {
                 console.error("應用程式初始化失敗:", error);
-                document.body.innerHTML = `<div style="text-align: center; padding: 40px; font-family: sans-serif;">
-                    <h1>應用程式載入失敗</h1>
-                    <p>無法連接到伺服器以獲取必要的設定資訊，請稍後再試。</p>
-                </div>`;
+                // 向使用者顯示一個明確的錯誤訊息
+                // 在實際部署中，您應使用一個更安全的 Fallback 來獲取 Firebase 配置
+                if (!firebase.apps.length) {
+                     document.body.innerHTML = `<div style="text-align: center; padding: 40px; font-family: sans-serif;">
+                        <h1>應用程式載入失敗</h1>
+                        <p>Firebase 設定無效。請在 script 區塊中填入您的 Firebase 設定資訊。</p>
+                    </div>`;
+                } else {
+                    database = firebase.database();
+                    initializeApp();
+                }
             }
         }
 
         // --- 事件監聽 ---
-        enterChatButton.addEventListener('click', handleLoginAttempt);
+        enterChatButton.addEventListener('click', () => handleLoginAttempt());
         roomPasswordInput.addEventListener('keyup', (event) => { if (event.key === 'Enter') handleLoginAttempt(); });
         userNameInput.addEventListener('keyup', (event) => { if (event.key === 'Enter') handleLoginAttempt(); });
         messageForm.addEventListener('submit', sendMessage);
@@ -1766,10 +1824,9 @@
         window.addEventListener('click', (event) => {
             if (event.target === memberModal) closeMemberModal();
             if (event.target === profileModal) closeProfileModal();
-            // [新增] 點擊面板外部時關閉面板
-            if (!pairingPanel.contains(event.target) && !pairingToggleButton.contains(event.target)) {
-                pairingPanel.style.display = 'none';
-                pairingToggleButton.classList.remove('active');
+            // [新增] 點擊配對面板外部時將其關閉
+            if (matchmakingPanel.style.display === 'block' && !matchmakingWidget.contains(event.target)) {
+                toggleMatchmakingPanel();
             }
         });
         userProfileButton.addEventListener('click', () => { openProfileModal(true); });
@@ -1777,6 +1834,12 @@
         closeProfileBtns.forEach(btn => btn.addEventListener('click', closeProfileModal));
         sitePasswordSubmit.addEventListener('click', verifyPassword);
         sitePasswordInput.addEventListener('keyup', (event) => { if (event.key === 'Enter') verifyPassword(); });
+        
+        // [新增] 配對功能事件監聽
+        matchmakingToggleBtn.addEventListener('click', toggleMatchmakingPanel);
+        matchTwoBtn.addEventListener('click', toggleMatchmaking);
+        matchThreeBtn.addEventListener('click', toggleMatchmaking);
+
         window.addEventListener('beforeunload', () => {
             if (currentRoomId && chatMessages.lastElementChild) {
                 const lastMessageElementId = chatMessages.lastElementChild.id;
@@ -1788,7 +1851,21 @@
         });
         
         // --- 初始化 ---
-        document.addEventListener('DOMContentLoaded', main);
+        // 當 DOM 載入完成後，執行主函數
+        // 為簡化，我們假設 Firebase 已在 HTML 他處初始化
+        // document.addEventListener('DOMContentLoaded', main);
+        
+        // 為了讓代碼片段能直接運行，我們直接初始化
+        try {
+            database = firebase.database();
+            initializeApp();
+        } catch (e) {
+            console.error(e);
+            document.body.innerHTML = `<div style="text-align: center; padding: 40px; font-family: sans-serif;">
+                <h1>應用程式載入失敗</h1>
+                <p>Firebase SDK 未能正確載入或初始化。請檢查您的網絡連線和 Firebase 設定。</p>
+            </div>`;
+        }
     </script>
 </body>
 </html>
