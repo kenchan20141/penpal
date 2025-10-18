@@ -905,22 +905,26 @@
                 nameSpan.className = 'room-name';
                 nameSpan.textContent = room.name;
                 roomInfoDiv.appendChild(nameSpan);
-                const previewDiv = document.createElement('div');
-                if (room.lastMessageText) {
-                    previewDiv.className = 'last-message-preview';
-                    const senderSpan = document.createElement('span');
-                    senderSpan.className = 'last-message-sender';
-                    senderSpan.textContent = `${room.lastMessageSender}: `;
-                    const textSpan = document.createElement('span');
-                    textSpan.className = 'last-message-text';
-                    textSpan.textContent = room.lastMessageText;
-                    previewDiv.appendChild(senderSpan);
-                    previewDiv.appendChild(textSpan);
-                } else {
-                    previewDiv.className = 'no-message-info';
-                    previewDiv.textContent = '尚無訊息';
-                }
-                roomInfoDiv.appendChild(previewDiv);
+              const previewDiv = document.createElement('div');
+        // 【修改重點】為預覽區塊加上獨立 ID，並設定初始狀態
+        previewDiv.id = `preview-${room.id}`;
+        if (room.lastMessageText) {
+            // 如果記憶體中已有訊息，直接顯示
+            previewDiv.className = 'last-message-preview';
+            const senderSpan = document.createElement('span');
+            senderSpan.className = 'last-message-sender';
+            senderSpan.textContent = `${room.lastMessageSender}: `;
+            const textSpan = document.createElement('span');
+            textSpan.className = 'last-message-text';
+            textSpan.textContent = room.lastMessageText;
+            previewDiv.appendChild(senderSpan);
+            previewDiv.appendChild(textSpan);
+        } else {
+            // 否則，顯示讀取中...
+            previewDiv.className = 'no-message-info';
+            previewDiv.textContent = '...';
+        }
+        roomInfoDiv.appendChild(previewDiv);
                 li.appendChild(roomInfoDiv);
                 li.addEventListener('click', () => {
                     const clickedRoom = savedRooms.find(r => r.id === room.id);
@@ -953,22 +957,43 @@
                 roomList.appendChild(li);
             });
         }
-        async function updateAndRenderRoomList() {
-            const fetchPromises = savedRooms.map(room => {
-                return database.ref('chatrooms/' + room.id).orderByKey().limitToLast(1).once('value').then(snapshot => {
+       function updateAndRenderRoomList() {
+            // 1. 先呼叫 renderRoomList，立即繪製出列表基本結構
+            renderRoomList();
+
+            // 2. 針對每一個已儲存的群組，獨立去抓取最新的訊息並更新其 UI
+            savedRooms.forEach(room => {
+                const previewElement = document.getElementById(`preview-${room.id}`);
+                if (!previewElement) return;
+
+                // 將對應的預覽區設為「讀取中」狀態
+                previewElement.className = 'no-message-info';
+                previewElement.textContent = '讀取中...';
+
+                // 從 Firebase 獲取該群組最後一則訊息
+                database.ref('chatrooms/' + room.id).orderByChild('timestamp').limitToLast(1).once('value')
+                .then(snapshot => {
                     if (snapshot.exists()) {
-                        const [messageId] = Object.keys(snapshot.val());
-                        const message = snapshot.val()[messageId];
+                        // 成功獲取訊息
+                        const message = Object.values(snapshot.val())[0]; // 取得訊息物件
                         room.lastMessageText = message.text;
                         room.lastMessageSender = message.name;
+
+                        // 直接更新 DOM
+                        previewElement.className = 'last-message-preview';
+                        previewElement.innerHTML = `<span class="last-message-sender">${message.name}: </span><span class="last-message-text">${message.text}</span>`;
                     } else {
+                        // 此群組沒有任何訊息
                         room.lastMessageText = null;
                         room.lastMessageSender = null;
+                        previewElement.textContent = '尚無訊息';
                     }
+                }).catch(error => {
+                    // 讀取失敗的處理
+                    console.error(`無法讀取群組 ${room.id} 的預覽:`, error);
+                    previewElement.textContent = '讀取失敗';
                 });
             });
-            await Promise.all(fetchPromises);
-            renderRoomList();
         }
         function addOrUpdateRoom(roomId, roomName, userName) {
             let existingRoom = savedRooms.find(r => r.id === roomId);
@@ -1447,7 +1472,7 @@
                 userNameInput.value = storedUserName;
             }
             loadRoomsFromStorage();
-            await updateAndRenderRoomList();
+            updateAndRenderRoomList();
             requestNotificationPermission();
             listenToAllSavedRoomsForNotifications();
             userNameInput.focus();
