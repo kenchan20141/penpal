@@ -905,26 +905,22 @@
                 nameSpan.className = 'room-name';
                 nameSpan.textContent = room.name;
                 roomInfoDiv.appendChild(nameSpan);
-              const previewDiv = document.createElement('div');
-        // 【修改重點】為預覽區塊加上獨立 ID，並設定初始狀態
-        previewDiv.id = `preview-${room.id}`;
-        if (room.lastMessageText) {
-            // 如果記憶體中已有訊息，直接顯示
-            previewDiv.className = 'last-message-preview';
-            const senderSpan = document.createElement('span');
-            senderSpan.className = 'last-message-sender';
-            senderSpan.textContent = `${room.lastMessageSender}: `;
-            const textSpan = document.createElement('span');
-            textSpan.className = 'last-message-text';
-            textSpan.textContent = room.lastMessageText;
-            previewDiv.appendChild(senderSpan);
-            previewDiv.appendChild(textSpan);
-        } else {
-            // 否則，顯示讀取中...
-            previewDiv.className = 'no-message-info';
-            previewDiv.textContent = '...';
-        }
-        roomInfoDiv.appendChild(previewDiv);
+                const previewDiv = document.createElement('div');
+                if (room.lastMessageText) {
+                    previewDiv.className = 'last-message-preview';
+                    const senderSpan = document.createElement('span');
+                    senderSpan.className = 'last-message-sender';
+                    senderSpan.textContent = `${room.lastMessageSender}: `;
+                    const textSpan = document.createElement('span');
+                    textSpan.className = 'last-message-text';
+                    textSpan.textContent = room.lastMessageText;
+                    previewDiv.appendChild(senderSpan);
+                    previewDiv.appendChild(textSpan);
+                } else {
+                    previewDiv.className = 'no-message-info';
+                    previewDiv.textContent = '尚無訊息';
+                }
+                roomInfoDiv.appendChild(previewDiv);
                 li.appendChild(roomInfoDiv);
                 li.addEventListener('click', () => {
                     const clickedRoom = savedRooms.find(r => r.id === room.id);
@@ -957,7 +953,23 @@
                 roomList.appendChild(li);
             });
         }
-      
+        async function updateAndRenderRoomList() {
+            const fetchPromises = savedRooms.map(room => {
+                return database.ref('chatrooms/' + room.id).orderByKey().limitToLast(1).once('value').then(snapshot => {
+                    if (snapshot.exists()) {
+                        const [messageId] = Object.keys(snapshot.val());
+                        const message = snapshot.val()[messageId];
+                        room.lastMessageText = message.text;
+                        room.lastMessageSender = message.name;
+                    } else {
+                        room.lastMessageText = null;
+                        room.lastMessageSender = null;
+                    }
+                });
+            });
+            await Promise.all(fetchPromises);
+            renderRoomList();
+        }
         function addOrUpdateRoom(roomId, roomName, userName) {
             let existingRoom = savedRooms.find(r => r.id === roomId);
             if (existingRoom) {
@@ -1311,7 +1323,6 @@
         function detachSingleGlobalListener(roomId) {
              if (globalListeners[roomId]) {
                 const { ref, listener } = globalListeners[roomId];
-                // 【確認】這裡使用的是 'child_added'
                 ref.off('child_added', listener);
                 delete globalListeners[roomId];
             }
@@ -1329,40 +1340,19 @@
         function detachAllMemberListeners() {
             Object.keys(memberListeners).forEach(detachSingleMemberListener);
         }
-        // 【修訂後】的核心函數：為單一群組建立即時監聽器
         function listenToSingleRoom(room) {
-            // 先移除舊的監聽器，防止重複監聽造成記憶體洩漏
             detachSingleGlobalListener(room.id);
-
+            const now = Date.now();
             const roomRef = database.ref('chatrooms/' + room.id);
-            
-            // 【修改重點】使用 limitToLast(1) 搭配 on('child_added', ...)
-            // 這個組合會：
-            // 1. 監聽器啟動時，立即取得最後一則訊息。
-            // 2. 之後，只要有任何新訊息加入，就會再次觸發。
-            const listener = roomRef.limitToLast(1).on('child_added', (snapshot) => {
-                const message = snapshot.val();
-                if (!message) return; // 如果群組為空，則不處理
-
-                // 更新記憶體中的資料
-                room.lastMessageText = message.text;
-                room.lastMessageSender = message.name;
-
-                // 【修改重點】直接更新主頁面對應的 UI 元素
-                const previewElement = document.getElementById(`preview-${room.id}`);
-                if (previewElement) {
-                    previewElement.className = 'last-message-preview';
-                    // 使用 innerHTML 直接寫入，比重建元素更高效
-                    previewElement.innerHTML = `<span class="last-message-sender">${message.name}: </span><span class="last-message-text">${message.text}</span>`;
-                }
-
-                // 如果使用者不在這個聊天室內，且視窗非作用中，才發送桌面通知
+            const listener = roomRef.orderByChild('timestamp').startAt(now).on('child_added', (snapshot) => {
                 if (room.id !== currentRoomId) {
+                    const message = snapshot.val();
                     showGlobalNotification(message, room);
+                    room.lastMessageText = message.text;
+                    room.lastMessageSender = message.name;
+                    renderRoomList();
                 }
             });
-
-            // 將新的監聽器儲存起來，以便後續可以移除它
             globalListeners[room.id] = { ref: roomRef, listener: listener };
         }
         function listenToAllSavedRoomsForNotifications() {
@@ -1448,7 +1438,7 @@
             roomPasswordInput.focus();
         }
         // --- 應用程式啟動邏輯 ---
-             async function startChatApp() {
+        async function startChatApp() {
             passwordOverlay.style.display = 'none';
             mainContainer.style.display = 'flex';
             currentUserId = getUserId();
@@ -1456,18 +1446,10 @@
             if (storedUserName) {
                 userNameInput.value = storedUserName;
             }
-            
             loadRoomsFromStorage();
-            
-            // 【修改重點】
-            // 1. 先呼叫 renderRoomList() 畫出列表的「骨架」。
-            //    此時所有訊息預覽都會是預設的 "..." 或 "尚無訊息"。
-            renderRoomList();
-
-            // 2. 接著，啟動所有群組的即時監聽器，它們會自動填入並更新預覽內容。
-            listenToAllSavedRoomsForNotifications(); // 這個函數名現在的功能已不僅是通知
-
+            await updateAndRenderRoomList();
             requestNotificationPermission();
+            listenToAllSavedRoomsForNotifications();
             userNameInput.focus();
         }
         function verifyPassword() {
