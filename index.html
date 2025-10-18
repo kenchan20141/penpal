@@ -150,90 +150,7 @@
             padding: 20px 40px;
             text-align: center;
             overflow-y: auto;
-            position: relative; /* 新增，為配對按鈕定位 */
         }
-
-        /* --- 【新增】隨機配對功能樣式 --- */
-        #matching-widget-container {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            z-index: 100;
-        }
-        #toggle-matching-panel-btn {
-            background-color: transparent;
-            border: 1px solid var(--border-color);
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background-color 0.3s, box-shadow 0.3s;
-        }
-        #toggle-matching-panel-btn:hover {
-            background-color: #f8f8f8;
-        }
-        #toggle-matching-panel-btn svg {
-            width: 22px;
-            height: 22px;
-            fill: var(--primary-color);
-        }
-        #matching-panel {
-            position: absolute;
-            top: 50px;
-            right: 0;
-            background-color: #fff;
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            opacity: 0;
-            visibility: hidden;
-            transform: translateY(-10px);
-            transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s;
-        }
-        #matching-panel.visible {
-            opacity: 1;
-            visibility: visible;
-            transform: translateY(0);
-        }
-        .match-btn {
-            font-family: var(--font-family);
-            background-color: #fdfdfd;
-            border: 1px solid var(--border-color);
-            padding: 8px 16px;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: all 0.3s;
-            font-size: 14px;
-            color: var(--text-color);
-            min-width: 100px;
-        }
-        .match-btn:hover {
-            background-color: #f5f5f5;
-            border-color: #ccc;
-        }
-        .match-btn.matching-active {
-            background-color: var(--primary-color);
-            color: #fff;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 8px rgba(96, 125, 139, 0.3); /* 低調發亮效果 */
-            pointer-events: none; /* 正在配對時不可點擊 */
-        }
-        .match-btn.matching-active::after {
-            content: '中...';
-        }
-        .match-btn:disabled:not(.matching-active) {
-            background-color: #f0f0f0;
-            color: #aaa;
-            cursor: not-allowed;
-        }
-        
         #login-screen h1 {
             font-size: 28px;
             font-weight: 500;
@@ -778,10 +695,6 @@
             .chat-input {
                  padding-bottom: env(safe-area-inset-bottom); /* 尊重底部安全區域（Home Indicator） */
             }
-            #matching-widget-container {
-                top: 10px;
-                right: 10px;
-            }
         }
     </style>
 </head>
@@ -800,19 +713,6 @@
     <div class="container" style="display: none;">
         <!-- 登入畫面 -->
         <div id="login-screen">
-            <!-- 【新增】隨機配對元件 -->
-            <div id="matching-widget-container">
-                <button id="toggle-matching-panel-btn" title="隨機配對">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M7 8a3 3 0 100-6 3 3 0 000 6zM14.5 9a3.5 3.5 0 100-7 3.5 3.5 0 000 7zM7 10.75a2.75 2.75 0 100 5.5 2.75 2.75 0 000-5.5zM14.5 11.5a3.5 3.5 0 100 7 3.5 3.5 0 000-7z" />
-                    </svg>
-                </button>
-                <div id="matching-panel">
-                    <button id="match-two-btn" class="match-btn" data-size="2">二人群組</button>
-                    <button id="match-three-btn" class="match-btn" data-size="3">三人群組</button>
-                </div>
-            </div>
-
             <h1>創作社——以文會友</h1>
             <div id="room-list-container">
                 <h2>我的文友群組</h2>
@@ -952,12 +852,6 @@
         const profileBookInput = document.getElementById('profile-book');
         const saveProfileBtn = document.getElementById('save-profile-btn');
         const closeProfileBtns = document.querySelectorAll('.close-profile');
-        // --- 【新增】配對功能 DOM 元素 ---
-        const toggleMatchingPanelBtn = document.getElementById('toggle-matching-panel-btn');
-        const matchingPanel = document.getElementById('matching-panel');
-        const matchTwoBtn = document.getElementById('match-two-btn');
-        const matchThreeBtn = document.getElementById('match-three-btn');
-
         // --- 全局狀態 ---
         let currentRoomId = null;
         let currentUserName = null;
@@ -969,7 +863,6 @@
         let memberListeners = {};
         let isEditingRoomName = false;
         let originalRoomName = '';
-        let matchingState = { isMatching: false, size: 0, listener: null, ref: null }; // 【新增】配對狀態
         const USER_COLORS = ['#e57373', '#ba68c8', '#7986cb', '#4fc3f7', '#4db6ac', '#aed581', '#ffb74d', '#ff8a65', '#90a4ae', '#a1887f'];
         function getColorForUserId(userId) {
             let hash = 0;
@@ -992,8 +885,6 @@
                 roomList.innerHTML = '<li id="no-rooms-message">尚未儲存任何群組</li>';
                 return;
             }
-            // 【修訂】將新房間排在最前面
-            savedRooms.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
             savedRooms.forEach(room => {
                 const li = document.createElement('li');
                 li.setAttribute('data-room-id', room.id);
@@ -1057,7 +948,7 @@
                 existingRoom.name = roomName;
                 existingRoom.userName = userName;
             } else {
-                existingRoom = { id: roomId, name: roomName, userName: userName, createdAt: Date.now() }; // 【新增】createdAt 用於排序
+                existingRoom = { id: roomId, name: roomName, userName: userName };
                 savedRooms.push(existingRoom);
             }
             saveRoomsToStorage();
@@ -1450,14 +1341,6 @@
                     addMemberToRoom(currentRoomId, currentUserName, currentUserId);
                     listenForMessages();
                     listenForMemberList();
-
-                    // 【新增】檢查個人資料是否存在，若否，則彈出編輯視窗
-                    const profileRef = database.ref(`chatrooms/${currentRoomId}/profiles/${currentUserId}`);
-                    profileRef.once('value', (profileSnapshot) => {
-                        if (!profileSnapshot.exists()) {
-                            setTimeout(() => openProfileModal(true), 500); // 延遲一點，確保UI穩定
-                        }
-                    });
                 }
             });
         }
@@ -1509,7 +1392,6 @@
             renderRoomList();
             requestNotificationPermission();
             listenToAllSavedRoomsForNotifications();
-            listenForMyNewRooms(); // 【新增】啟動新房間監聽器
         }
         function verifyPassword() {
             const enteredPassword = sitePasswordInput.value.trim();
@@ -1547,220 +1429,6 @@
                 passwordOverlay.style.display = 'flex';
                 mainContainer.style.display = 'none';
             }
-        }
-        
-        // --- 【新增】隨機配對功能相關函數 ---
-        
-        // 切換配對狀態
-        function toggleMatching(size) {
-            if (matchingState.isMatching) {
-                stopMatching();
-            } else {
-                startMatching(size);
-            }
-        }
-
-        // 開始配對
-        function startMatching(size) {
-            currentUserName = userNameInput.value.trim();
-            if (!currentUserName) {
-                alert('開始配對前，請先輸入您的稱呼。');
-                userNameInput.focus();
-                return;
-            }
-            
-            const queueName = size === '2' ? 'twoPerson' : 'threePerson';
-            const queueRef = database.ref(`matchingQueue/${queueName}`);
-            
-            matchingState = {
-                isMatching: true,
-                size: parseInt(size, 10),
-                ref: queueRef
-            };
-
-            // 更新UI
-            updateMatchingUI();
-
-            // 將自己加入佇列
-            queueRef.child(currentUserId).set(currentUserName)
-                .then(() => {
-                    // 監聽佇列變化以觸發配對檢查
-                    matchingState.listener = queueRef.on('value', (snapshot) => {
-                        checkForMatch(snapshot, matchingState.size);
-                    });
-                })
-                .catch(error => {
-                    console.error("加入配對佇列失敗:", error);
-                    alert("無法開始配對，請稍後再試。");
-                    stopMatching();
-                });
-        }
-
-        // 停止配對
-        function stopMatching() {
-            if (matchingState.ref) {
-                // 停止監聽
-                if (matchingState.listener) {
-                    matchingState.ref.off('value', matchingState.listener);
-                }
-                // 從佇列中移除自己
-                matchingState.ref.child(currentUserId).remove();
-            }
-
-            matchingState = { isMatching: false, size: 0, listener: null, ref: null };
-            updateMatchingUI();
-        }
-
-        // 更新配對按鈕的UI狀態
-        function updateMatchingUI() {
-            const { isMatching, size } = matchingState;
-            const buttons = [matchTwoBtn, matchThreeBtn];
-
-            buttons.forEach(btn => {
-                const btnSize = parseInt(btn.dataset.size, 10);
-                if (isMatching) {
-                    if (btnSize === size) {
-                        btn.classList.add('matching-active');
-                        btn.disabled = true;
-                    } else {
-                        btn.classList.remove('matching-active');
-                        btn.disabled = true; // 正在配對時，禁用另一個按鈕
-                    }
-                } else {
-                    btn.classList.remove('matching-active');
-                    btn.disabled = false;
-                }
-            });
-        }
-
-        // 檢查是否滿足配對條件
-        function checkForMatch(snapshot, requiredSize) {
-            // 如果配對未啟動、佇列不存在或人數不足，則直接返回
-            if (!matchingState.isMatching || !snapshot.exists() || snapshot.numChildren() < requiredSize) {
-                return;
-            }
-
-            console.log(`佇列人數達到 ${snapshot.numChildren()}，滿足 ${requiredSize} 人條件，嘗試啟動 Transaction。`);
-
-            // 此變數用於在 Transaction 更新函數與完成回調之間傳遞「被配對的使用者列表」
-            let matchedUsers = null;
-
-            // 使用 Transaction 原子性地讀取並修改佇列
-            matchingState.ref.transaction(currentQueueData => {
-                // 在 Transaction 內部再次驗證佇列狀態
-                if (currentQueueData && Object.keys(currentQueueData).length >= requiredSize) {
-                    
-                    const usersInQueue = Object.entries(currentQueueData);
-                    const userIdsInQueue = usersInQueue.map(([id, _]) => id);
-
-                    // 檢查當前使用者是否還在佇列中（可能已被其他成功的 Transaction 移除）
-                    if (userIdsInQueue.includes(currentUserId)) {
-                        // 如果還在，則此客戶端將嘗試完成這次配對
-                        // 從佇列中取出所需數量的使用者
-                        const usersToMatch = usersInQueue.slice(0, requiredSize);
-                        
-                        // 暫存配對列表，以便在 Transaction 成功後使用
-                        matchedUsers = usersToMatch;
-
-                        console.log('Transaction 內部：準備配對', matchedUsers.map(u => u[1]));
-
-                        // 從佇列數據中移除已被配對的使用者
-                        usersToMatch.forEach(([id, _]) => {
-                            delete currentQueueData[id];
-                        });
-                        
-                        // 返回修改後的佇列數據
-                        return currentQueueData;
-                    }
-                }
-                
-                // 如果條件不滿足（例如自己已被配對），返回 undefined 以中止此客戶端的 Transaction
-                return;
-
-            }, (error, committed, snapshotAfter) => {
-                // 這是 Transaction 的完成回調函數
-
-                if (error) {
-                    console.error('配對 Transaction 失敗:', error);
-                    alert('配對時發生錯誤，請稍後再試。');
-                    stopMatching();
-                } else if (committed && matchedUsers) {
-                    // **關鍵**：僅當 Transaction 成功提交 (committed = true)，
-                    // 且是由此客戶端成功鎖定了一組配對 (matchedUsers 不為 null) 時，
-                    // 才執行建立群組的操作。
-                    
-                    console.log('Transaction 成功提交！由本客戶端建立群組給:', matchedUsers.map(u => u[1]));
-                    createGroupForMatchedUsers(matchedUsers);
-
-                    // 成功觸發建立群組後，這位使用者就可以停止等待配對了。
-                    // 其他成員會透過 listenForMyNewRooms 監聽器被通知並自動停止配對。
-                    stopMatching();
-
-                } else {
-                    // Transaction 未提交，或未輪到自己處理配對。
-                    // 這通常是正常的，代表有另一位使用者的 Transaction 搶先成功了。
-                    // 此客戶端不需做任何事，只需靜待 `listenForMyNewRooms` 的新群組通知即可。
-                    console.log('Transaction 未提交或無配對任務，可能是其他客戶端已完成。Committed:', committed);
-                }
-            });
-        }
-        
-        // 為配對成功的使用者建立群組
-        function createGroupForMatchedUsers(users) {
-            const newRoomRef = database.ref('chatrooms').push();
-            const newRoomId = newRoomRef.key;
-            const newRoomName = `隨機群組-${newRoomId.slice(-4)}`;
-
-            const members = {};
-            const userRoomUpdates = {};
-            users.forEach(([userId, userName]) => {
-                members[userName] = userId;
-                userRoomUpdates[`/userRooms/${userId}/${newRoomId}`] = newRoomName; // 通知所有成員
-            });
-
-            const newRoomData = {
-                members: members,
-                // 可以添加創建時間等元數據
-                createdAt: firebase.database.ServerValue.TIMESTAMP
-            };
-            
-            // 使用 multi-path update 一次性寫入所有數據
-            const updates = {};
-            updates[`/chatrooms/${newRoomId}`] = newRoomData;
-            Object.assign(updates, userRoomUpdates);
-
-            database.ref().update(updates)
-                .then(() => {
-                    console.log(`成功為 ${users.length} 位使用者建立群組 ${newRoomId}`);
-                })
-                .catch(err => {
-                    console.error("建立群組失敗:", err);
-                });
-        }
-
-        // 監聽是否有新群組邀請
-        function listenForMyNewRooms() {
-            if (!currentUserId) return;
-            const userRoomsRef = database.ref('userRooms/' + currentUserId);
-            
-            userRoomsRef.on('child_added', (snapshot) => {
-                const roomId = snapshot.key;
-                const roomName = snapshot.val();
-                
-                // 停止當前的配對狀態（如果有的話）
-                if (matchingState.isMatching) {
-                    stopMatching();
-                }
-
-                // 將新房間加入本地列表並更新UI
-                addOrUpdateRoom(roomId, roomName, userNameInput.value.trim());
-
-                // 顯示通知
-                alert(`您已成功配對！新群組「${roomName}」已加入您的列表。`);
-
-                // 移除通知，避免重複觸發
-                snapshot.ref.remove();
-            });
         }
 
         // --- NEW: 主執行函數 ---
@@ -1802,10 +1470,6 @@
         window.addEventListener('click', (event) => {
             if (event.target === memberModal) closeMemberModal();
             if (event.target === profileModal) closeProfileModal();
-            // 【新增】點擊配對面板外部時，將其關閉
-            if (!matchingPanel.contains(event.target) && !toggleMatchingPanelBtn.contains(event.target)) {
-                matchingPanel.classList.remove('visible');
-            }
         });
         userProfileButton.addEventListener('click', () => { openProfileModal(true); });
         saveProfileBtn.addEventListener('click', saveProfile);
@@ -1820,19 +1484,7 @@
                     localStorage.setItem(`lastReadMsg_${currentRoomId}`, lastMessageId);
                 }
             }
-            // 【新增】關閉瀏覽器前取消配對
-            if (matchingState.isMatching) {
-                stopMatching();
-            }
         });
-
-        // --- 【新增】配對功能事件監聽 ---
-        toggleMatchingPanelBtn.addEventListener('click', () => {
-            matchingPanel.classList.toggle('visible');
-        });
-        matchTwoBtn.addEventListener('click', () => toggleMatching('2'));
-        matchThreeBtn.addEventListener('click', () => toggleMatching('3'));
-
         
         // --- 初始化 ---
         // 當 DOM 載入完成後，執行新的主函數
