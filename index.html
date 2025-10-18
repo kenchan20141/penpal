@@ -353,8 +353,7 @@
         }
         #edit-room-name-button,
         #member-info-button,
-        #user-profile-button,
-        #matching-toggle-button { /* [新增] 包含配對按鈕 */
+        #user-profile-button {
             background: none;
             border: none;
             cursor: pointer;
@@ -368,15 +367,13 @@
         }
         #edit-room-name-button:hover,
         #member-info-button:hover,
-        #user-profile-button:hover,
-        #matching-toggle-button:hover { /* [新增] 包含配對按鈕 */
+        #user-profile-button:hover {
             background-color: #e0e0e0;
             transform: scale(1.1);
         }
         #edit-room-name-button svg,
         #member-info-button svg,
-        #user-profile-button svg,
-        #matching-toggle-button svg { /* [新增] 包含配對按鈕 */
+        #user-profile-button svg {
             width: 20px;
             height: 20px;
         }
@@ -395,57 +392,6 @@
         #logout-button:hover {
             background-color: #e0e0e0;
             transform: scale(1.1);
-        }
-        /* --- [新增] 配對功能樣式 --- */
-        .matching-panel {
-            display: none; /* 初始隱藏 */
-            padding: 15px 20px;
-            background-color: #f8f9fa; /* 稍微不同的背景色 */
-            border-bottom: 1px solid var(--border-color);
-            text-align: center;
-            animation: fadeInDown 0.3s ease-out;
-        }
-        @keyframes fadeInDown {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        .matching-panel p {
-            font-size: 14px;
-            color: var(--subtle-text-color);
-            margin-bottom: 12px;
-        }
-        .matching-buttons-container {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-        }
-        .matching-btn {
-            font-family: var(--font-family);
-            font-size: 15px;
-            padding: 8px 18px;
-            border-radius: 20px;
-            border: 1px solid var(--border-color);
-            background-color: var(--input-bg-color);
-            color: var(--text-color);
-            cursor: pointer;
-            transition: all 0.3s ease;
-            -webkit-appearance: none;
-        }
-        .matching-btn.active {
-            border-color: var(--primary-color);
-            color: var(--primary-color);
-            background-color: #e8f0f3; /* 低調的啟用背景色 */
-            box-shadow: 0 0 8px rgba(96, 125, 139, 0.3); /* 低調的發光效果 */
-        }
-        .matching-btn:not(.active):hover {
-            background-color: #f1f3f5;
-            border-color: #ced4da;
         }
         .chat-messages {
             flex-grow: 1;
@@ -797,11 +743,6 @@
                     </button>
                 </div>
                 <div class="header-right">
-                    <button id="matching-toggle-button" title="隨機配對">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h.5a1.5 1.5 0 010 3h-.5a1 1 0 00-1 1v.5a1.5 1.5 0 01-3 0V8a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3h.5a1 1 0 001-1v-.5zM6.5 10a1.5 1.5 0 013 0V11a1 1 0 001 1h.5a1.5 1.5 0 010 3h-.5a1 1 0 00-1 1v.5a1.5 1.5 0 01-3 0v-.5a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3h.5a1 1 0 001-1V10z"></path>
-                        </svg>
-                    </button>
                     <button id="member-info-button" title="檢視群組成員">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                             <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
@@ -819,13 +760,6 @@
                     </a>
                 </div>
             </header>
-            <div id="matching-panel" class="matching-panel">
-                <p>尋找新的文友進行創作交流</p>
-                <div class="matching-buttons-container">
-                    <button id="match-two-btn" class="matching-btn">二人配對</button>
-                    <button id="match-three-btn" class="matching-btn">三人群組</button>
-                </div>
-            </div>
             <div id="chat-messages" class="chat-messages"></div>
             <form id="message-form" class="chat-input">
                 <input type="text" id="message-input" class="input-field" placeholder="分享你的閱讀心得..." autocomplete="off">
@@ -918,12 +852,6 @@
         const profileBookInput = document.getElementById('profile-book');
         const saveProfileBtn = document.getElementById('save-profile-btn');
         const closeProfileBtns = document.querySelectorAll('.close-profile');
-        // [新增] 配對功能 DOM 元素
-        const matchingToggleButton = document.getElementById('matching-toggle-button');
-        const matchingPanel = document.getElementById('matching-panel');
-        const matchTwoBtn = document.getElementById('match-two-btn');
-        const matchThreeBtn = document.getElementById('match-three-btn');
-        
         // --- 全局狀態 ---
         let currentRoomId = null;
         let currentUserName = null;
@@ -935,9 +863,6 @@
         let memberListeners = {};
         let isEditingRoomName = false;
         let originalRoomName = '';
-        // [新增] 配對功能狀態
-        let matchingStatusRef = null;
-
         const USER_COLORS = ['#e57373', '#ba68c8', '#7986cb', '#4fc3f7', '#4db6ac', '#aed581', '#ffb74d', '#ff8a65', '#90a4ae', '#a1887f'];
         function getColorForUserId(userId) {
             let hash = 0;
@@ -1380,9 +1305,7 @@
             detachAllGlobalListeners();
             savedRooms.forEach(listenToSingleRoom);
         }
-        async function joinChat(userName, password) {
-            await cancelMatching();
-            
+        function joinChat(userName, password) {
             const userId = getUserId();
             const userNameRef = database.ref('usernames/' + userName);
             enterChatButton.disabled = true;
@@ -1434,8 +1357,7 @@
             }
             joinChat(userName, password);
         }
-        async function logout() {
-            await cancelMatching();
+        function logout() {
             if (currentRoomId && chatMessages.lastElementChild) {
                 const lastMessageElementId = chatMessages.lastElementChild.id;
                 if (lastMessageElementId && lastMessageElementId.startsWith('msg-')) {
@@ -1470,7 +1392,6 @@
             renderRoomList();
             requestNotificationPermission();
             listenToAllSavedRoomsForNotifications();
-            initializeMatchingFeature();
         }
         function verifyPassword() {
             const enteredPassword = sitePasswordInput.value.trim();
@@ -1508,133 +1429,6 @@
                 passwordOverlay.style.display = 'flex';
                 mainContainer.style.display = 'none';
             }
-        }
-        
-        // --- [新增] 配對功能邏輯 ---
-        function toggleMatchingPanel() {
-            if (matchingPanel.style.display === 'block') {
-                matchingPanel.style.display = 'none';
-            } else {
-                matchingPanel.style.display = 'block';
-            }
-        }
-        async function handleMatchingClick(groupSize) {
-            if (!currentUserName || !currentUserId) {
-                alert('請先進入一個群組以確認您的用戶身份，才能開始配對。');
-                return;
-            }
-            const btn = groupSize === 2 ? matchTwoBtn : matchThreeBtn;
-            const queueType = groupSize === 2 ? 'twoPerson' : 'threePerson';
-            if (btn.classList.contains('active')) {
-                await cancelMatching();
-            } else {
-                await cancelMatching();
-                matchingStatusRef = database.ref(`matchingQueue/${queueType}/${currentUserId}`);
-                const userData = { userName: currentUserName, timestamp: firebase.database.ServerValue.TIMESTAMP };
-                try {
-                    await matchingStatusRef.set(userData);
-                    await matchingStatusRef.onDisconnect().remove();
-                    btn.classList.add('active');
-                    localStorage.setItem('matchingStatus', JSON.stringify({ type: queueType, userId: currentUserId }));
-                } catch (error) {
-                    console.error("加入配對佇列失敗:", error);
-                    alert("無法加入配對，請稍後再試。");
-                }
-            }
-        }
-        async function cancelMatching() {
-            const storedStatus = JSON.parse(localStorage.getItem('matchingStatus'));
-            if (matchingStatusRef) {
-                await matchingStatusRef.onDisconnect().cancel();
-                await matchingStatusRef.remove();
-            } else if (storedStatus && storedStatus.userId) {
-                const oldRef = database.ref(`matchingQueue/${storedStatus.type}/${storedStatus.userId}`);
-                await oldRef.remove();
-            }
-            matchingStatusRef = null;
-            matchTwoBtn.classList.remove('active');
-            matchThreeBtn.classList.remove('active');
-            localStorage.removeItem('matchingStatus');
-        }
-        function initializeMatchingListeners() {
-            const twoPersonQueueRef = database.ref('matchingQueue/twoPerson');
-            const threePersonQueueRef = database.ref('matchingQueue/threePerson');
-            twoPersonQueueRef.on('value', snapshot => {
-                if (snapshot.numChildren() >= 2) {
-                    checkForMatches(2, twoPersonQueueRef);
-                }
-            });
-            threePersonQueueRef.on('value', snapshot => {
-                if (snapshot.numChildren() >= 3) {
-                    checkForMatches(3, threePersonQueueRef);
-                }
-            });
-        }
-        function checkForMatches(groupSize, queueRef) {
-            queueRef.transaction(currentQueue => {
-                if (!currentQueue || Object.keys(currentQueue).length < groupSize) {
-                    return; 
-                }
-                const usersInQueue = Object.entries(currentQueue).sort((a, b) => a[1].timestamp - b[1].timestamp);
-                const matchedUsers = usersInQueue.slice(0, groupSize);
-                const matchedUserIds = matchedUsers.map(u => u[0]);
-                if (!matchedUserIds.includes(currentUserId)) {
-                    return;
-                }
-                matchedUserIds.forEach(userId => {
-                    delete currentQueue[userId];
-                });
-                createMatchedRoom(matchedUsers);
-                return currentQueue;
-            }, (error, committed, snapshot) => {
-                if (error) { console.error('配對 Transaction 失敗:', error); }
-            });
-        }
-        async function createMatchedRoom(members) {
-            await cancelMatching();
-            const newRoomId = database.ref('chatrooms').push().key;
-            const roomName = members.length === 2 ? `新的二人文會` : `新的三人文會`;
-            const membersUpdate = {};
-            members.forEach(([userId, userData]) => {
-                membersUpdate[`chatrooms/${newRoomId}/members/${userData.userName}`] = userId;
-            });
-            try {
-                await database.ref().update(membersUpdate);
-                addOrUpdateRoom(newRoomId, roomName, currentUserName);
-                if (currentRoomId) {
-                    stopListeningForMessages();
-                    stopListeningForMemberList();
-                    listenToAllSavedRoomsForNotifications();
-                }
-                currentRoomId = newRoomId;
-                messagesRef = database.ref('chatrooms/' + currentRoomId);
-                membersRef = database.ref('chatrooms/' + currentRoomId + '/members');
-                chatHeaderName.textContent = roomName;
-                loginScreen.style.display = 'none';
-                chatScreen.style.display = 'flex';
-                detachSingleGlobalListener(currentRoomId);
-                listenForMessages();
-                listenForMemberList();
-                setTimeout(() => { openProfileModal(true); }, 500);
-            } catch (error) {
-                console.error("建立配對房間失敗:", error);
-                alert("建立配對房間時發生錯誤，請重試。");
-            }
-        }
-        function initializeMatchingFeature() {
-            const storedStatus = JSON.parse(localStorage.getItem('matchingStatus'));
-            if (storedStatus && storedStatus.userId === currentUserId) {
-                if (storedStatus.type === 'twoPerson') matchTwoBtn.classList.add('active');
-                else if (storedStatus.type === 'threePerson') matchThreeBtn.classList.add('active');
-                
-                if (currentUserId) {
-                    matchingStatusRef = database.ref(`matchingQueue/${storedStatus.type}/${currentUserId}`);
-                    matchingStatusRef.onDisconnect().remove();
-                }
-            } else {
-                 localStorage.removeItem('matchingStatus');
-            }
-            initializeMatchingListeners();
         }
 
         // --- NEW: 主執行函數 ---
@@ -1691,10 +1485,6 @@
                 }
             }
         });
-        // [新增] 配對功能事件監聽
-        matchingToggleButton.addEventListener('click', toggleMatchingPanel);
-        matchTwoBtn.addEventListener('click', () => handleMatchingClick(2));
-        matchThreeBtn.addEventListener('click', () => handleMatchingClick(3));
         
         // --- 初始化 ---
         // 當 DOM 載入完成後，執行新的主函數
