@@ -1635,45 +1635,64 @@
 
         // 檢查是否滿足配對條件
         function checkForMatch(snapshot, requiredSize) {
+            // 如果配對未啟動、佇列不存在或人數不足，則直接返回
             if (!matchingState.isMatching || !snapshot.exists() || snapshot.numChildren() < requiredSize) {
-                return; // 條件不滿足，不執行任何操作
+                return;
             }
 
-            // 使用 Transaction 確保原子操作，防止多人同時建立群組
-            matchingState.ref.transaction(currentQueueData => {
-                if (currentQueueData && Object.keys(currentQueueData).length >= requiredSize) {
-                    // 提取需要配對的使用者
-                    const usersToMatch = Object.entries(currentQueueData).slice(0, requiredSize);
-                    const userIdsToMatch = usersToMatch.map(([id, name]) => id);
+            // 此變數用於在 Transaction 更新函數與完成回調之間傳遞「被配對的使用者列表」
+            // 只有當此客戶端的 Transaction 成功提交時，它才會有值。
+            let potentialMatch = null;
 
-                    // 檢查自己是否在這次的配對名單中
+            // 使用 Transaction 原子性地讀取並修改佇列，防止競爭條件
+            matchingState.ref.transaction(currentQueueData => {
+                // 在 Transaction 內部再次驗證佇列狀態，因為數據可能在期間發生變化
+                if (currentQueueData && Object.keys(currentQueueData).length >= requiredSize) {
+                    // 從佇列中取出所需數量的使用者進行配對
+                    const usersToMatch = Object.entries(currentQueueData).slice(0, requiredSize);
+                    const userIdsToMatch = usersToMatch.map(([id, _]) => id);
+
+                    // 檢查當前使用者是否包含在這次的配對名單中
                     if (userIdsToMatch.includes(currentUserId)) {
-                        // 從佇列中移除已配對的使用者
-                        usersToMatch.forEach(([id, name]) => {
+                        // 如果是，則此客戶端將嘗試完成這次配對
+                        // 暫存配對列表，以便在 Transaction 成功後使用
+                        potentialMatch = usersToMatch;
+
+                        // 從佇列數據中移除已被配對的使用者
+                        usersToMatch.forEach(([id, _]) => {
                             delete currentQueueData[id];
                         });
-                        
-                        // 建立群組（這個操作放在 transaction 外部，因為 transaction 內不能有副作用）
-                        createGroupForMatchedUsers(usersToMatch);
                     }
+                    // 返回修改後的佇列數據。
+                    // 如果當前使用者不在配對名單中，將返回未修改的數據，
+                    // 其 Transaction 很可能會因為其他客戶端的成功提交而被中止。
                     return currentQueueData;
                 }
-                // 如果條件不滿足，返回 undefined 中止 transaction
-                return; 
+                
+                // 如果條件不滿足，返回 undefined 以中止 Transaction
+                return;
+
             }, (error, committed, snapshot) => {
+                // 這是 Transaction 的完成回調函數
+
                 if (error) {
                     console.error('配對 Transaction 失敗:', error);
-                } else if (!committed) {
-                    // Transaction 未提交，可能因為數據在過程中被改變，這是正常的，等待下一次觸發即可
-                } else {
-                    // Transaction 成功，如果自己被配對，則停止本地的配對狀態
-                    if (matchingState.isMatching) {
-                        const matchedUserIds = Object.keys(snapshot.val() || {});
-                        if (!matchedUserIds.includes(currentUserId)) {
-                           stopMatching();
-                        }
-                    }
+                    // 可以在此處添加錯誤處理，例如停止配對
+                } else if (committed && potentialMatch) {
+                    // **關鍵**：僅當 Transaction 成功提交 (committed = true)，
+                    // 且是由此客戶端發起的配對 (potentialMatch 不為 null) 時，
+                    // 才執行建立群組的副作用操作。
+                    
+                    console.log('Transaction 成功，由本客戶端建立群組:', potentialMatch);
+                    createGroupForMatchedUsers(potentialMatch);
+
+                    // 成功建立群組後，這位使用者就可以停止等待配對了。
+                    // 其他成員會透過 listenForMyNewRooms 監聽器被通知並停止配對。
+                    stopMatching();
                 }
+                // 如果 Transaction 未提交 (committed = false)，
+                // 代表有另一位使用者的 Transaction 搶先成功了。
+                // 此客戶端不需做任何事，只需靜待 `listenForMyNewRooms` 的通知即可。
             });
         }
         
