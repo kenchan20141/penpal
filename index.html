@@ -816,17 +816,9 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
     <script>
         // --- Firebase 配置 ---
-        const firebaseConfig = {
-            apiKey: "AIzaSyBbNddSd8xF3tQJEfj42i2sSkAVK7SfqFw",
-            authDomain: "matching-72d36.firebaseapp.com",
-            databaseURL: "https://matching-72d36-default-rtdb.firebaseio.com",
-            projectId: "matching-72d36",
-            storageBucket: "matching-72d36.firebasestorage.app",
-            messagingSenderId: "66478784623",
-            appId: "1:66478784623:web:9a5e3636b78e31280f0d9a"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
+        // Firebase 設定已從此處移除，將從伺服器安全地獲取
+        let database; // 在全域宣告 database 變數
+
         // --- DOM 元素獲取 ---
         const passwordOverlay = document.getElementById('password-overlay');
         const sitePasswordInput = document.getElementById('site-password-input');
@@ -852,8 +844,6 @@
         const closeModalBtn = document.querySelector('.close');
         const memberListElement = document.getElementById('member-list');
         const memberCountElement = document.getElementById('member-count');
-
-        // --- 個人資料相關 DOM 元素 ---
         const profileModal = document.getElementById('profileModal');
         const profileModalTitle = document.getElementById('profile-modal-title');
         const profileForm = document.getElementById('profile-form');
@@ -862,7 +852,6 @@
         const profileBookInput = document.getElementById('profile-book');
         const saveProfileBtn = document.getElementById('save-profile-btn');
         const closeProfileBtns = document.querySelectorAll('.close-profile');
-
         // --- 全局狀態 ---
         let currentRoomId = null;
         let currentUserName = null;
@@ -953,9 +942,6 @@
                 roomList.appendChild(li);
             });
         }
-
-        // [REMOVED] The updateAndRenderRoomList function is now removed. Its functionality is merged into the new real-time listener.
-
         function addOrUpdateRoom(roomId, roomName, userName) {
             let existingRoom = savedRooms.find(r => r.id === roomId);
             if (existingRoom) {
@@ -966,13 +952,12 @@
                 savedRooms.push(existingRoom);
             }
             saveRoomsToStorage();
-            listenToSingleRoom(existingRoom); // Attach the real-time listener for this room.
-            renderRoomList(); // Re-render to immediately show the name change. The listener will fill in the message.
+            listenToSingleRoom(existingRoom);
+            renderRoomList();
         }
         
         const editIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" /></svg>`;
         const saveIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>`;
-
         function handleRoomNameKeydown(event) {
             if (event.key === 'Enter') {
                 event.preventDefault();
@@ -982,7 +967,6 @@
                 chatHeaderName.blur();
             }
         }
-
         function toggleRoomNameEdit() {
             if (isEditingRoomName) {
                 const newName = chatHeaderName.textContent.trim();
@@ -1017,7 +1001,6 @@
                 }, { once: true });
             }
         }
-
         function getUserId() {
             let userId = localStorage.getItem('penpal-userId');
             if (!userId) {
@@ -1075,9 +1058,7 @@
                         separator.className = 'new-messages-separator';
                         separator.innerHTML = '<span>新留言</span>';
                         chatMessages.insertBefore(separator, firstUnreadElement);
-
                         separator.scrollIntoView({ behavior: 'auto', block: 'center' });
-
                         firstUnreadElement.style.transition = 'background-color 0.5s';
                         firstUnreadElement.style.backgroundColor = 'rgba(96, 125, 139, 0.1)';
                         setTimeout(() => {
@@ -1118,7 +1099,6 @@
                 });
             }
         }
-
         function stopListeningForMessages() {
             if (messagesRef) messagesRef.off();
         }
@@ -1188,30 +1168,21 @@
                 console.error("移除成員失敗:", error);
             });
         }
-        function openMemberModal() {
-            memberModal.style.display = "block";
-        }
-        function closeMemberModal() {
-            memberModal.style.display = "none";
-        }
-
+        function openMemberModal() { memberModal.style.display = "block"; }
+        function closeMemberModal() { memberModal.style.display = "none"; }
         function openProfileModal(isEditing = false, targetUserId = null, targetUserName = null) {
             const userId = isEditing ? currentUserId : targetUserId;
             const userName = isEditing ? currentUserName : targetUserName;
-
             profileModalTitle.textContent = isEditing ? '編輯個人資料' : `「${userName || '未知用戶'}」的個人資料`;
             profileNameInput.value = userName || '未知用戶';
-
             profileIntroInput.value = '讀取中...';
             profileBookInput.value = '讀取中...';
             profileIntroInput.readOnly = true;
             profileBookInput.readOnly = true;
             saveProfileBtn.style.display = 'none';
-
             const profileRef = database.ref(`chatrooms/${currentRoomId}/profiles/${userId}`);
             profileRef.once('value').then(snapshot => {
                 const profileData = snapshot.val() || { intro: '', book: '' };
-
                 if (isEditing) {
                     profileIntroInput.value = profileData.intro;
                     profileBookInput.value = profileData.book;
@@ -1231,40 +1202,28 @@
                 profileIntroInput.value = '讀取資料失敗。';
                 profileBookInput.value = '讀取資料失敗。';
             });
-
             profileModal.style.display = "block";
         }
-
-        function closeProfileModal() {
-            profileModal.style.display = "none";
-        }
-
+        function closeProfileModal() { profileModal.style.display = "none"; }
         function saveProfile() {
             const intro = profileIntroInput.value.trim();
             const book = profileBookInput.value.trim();
-
             if (!currentRoomId || !currentUserId) {
                 alert('錯誤：無法儲存資料，請重新登入。');
                 return;
             }
-
             const profileRef = database.ref(`chatrooms/${currentRoomId}/profiles/${currentUserId}`);
-            profileRef.set({
-                intro: intro,
-                book: book
-            }).then(() => {
-                closeProfileModal();
-            }).catch(error => {
-                console.error("儲存個人資料時發生錯誤:", error);
-                alert('儲存失敗，請檢查網絡連線或權限設定。');
-            });
+            profileRef.set({ intro: intro, book: book })
+                .then(() => { closeProfileModal(); })
+                .catch(error => {
+                    console.error("儲存個人資料時發生錯誤:", error);
+                    alert('儲存失敗，請檢查網絡連線或權限設定。');
+                });
         }
-
         function viewOtherUserProfile(userId, userName) {
             if (userId === currentUserId) return;
             openProfileModal(false, userId, userName);
         }
-
         function requestNotificationPermission() {
             if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
                 Notification.requestPermission().then(permission => {
@@ -1294,16 +1253,13 @@
                 };
             }
         }
-        
-        // [MODIFIED] The listener detachment function is updated for the new listener type.
         function detachSingleGlobalListener(roomId) {
              if (globalListeners[roomId]) {
                 const { ref, listener } = globalListeners[roomId];
-                ref.off('value', listener); // Use 'value' as the event type
+                ref.off('value', listener);
                 delete globalListeners[roomId];
             }
         }
-
         function detachSingleMemberListener(roomId) {
              if (memberListeners[roomId]) {
                 const ref = database.ref('chatrooms/' + roomId + '/members');
@@ -1311,19 +1267,11 @@
                 delete memberListeners[roomId];
             }
         }
-        function detachAllGlobalListeners() {
-            Object.keys(globalListeners).forEach(detachSingleGlobalListener);
-        }
-        function detachAllMemberListeners() {
-            Object.keys(memberListeners).forEach(detachSingleMemberListener);
-        }
-
-        // [MODIFIED] This function is now the single source of truth for fetching and listening to last message updates.
+        function detachAllGlobalListeners() { Object.keys(globalListeners).forEach(detachSingleGlobalListener); }
+        function detachAllMemberListeners() { Object.keys(memberListeners).forEach(detachSingleMemberListener); }
         function listenToSingleRoom(room) {
             detachSingleGlobalListener(room.id); 
-
             const lastMessageQuery = database.ref('chatrooms/' + room.id).orderByChild('timestamp').limitToLast(1);
-            
             const listener = lastMessageQuery.on('value', (snapshot) => {
                 let message = null;
                 if (snapshot.exists()) {
@@ -1331,7 +1279,6 @@
                     const messageId = Object.keys(snapshotVal)[0];
                     message = snapshotVal[messageId];
                 }
-
                 const roomToUpdate = savedRooms.find(r => r.id === room.id);
                 if (roomToUpdate) {
                     if (message) {
@@ -1348,17 +1295,12 @@
                         }
                     }
                 }
-                
                 if (message && message.timestamp > (Date.now() - 5000) && room.id !== currentRoomId) {
                      showGlobalNotification(message, room);
                 }
-            }, (error) => {
-                console.error(`Listener error for room ${room.id}:`, error);
-            });
-
+            }, (error) => { console.error(`Listener error for room ${room.id}:`, error); });
             globalListeners[room.id] = { ref: lastMessageQuery, listener: listener };
         }
-
         function listenToAllSavedRoomsForNotifications() {
             detachAllGlobalListeners();
             savedRooms.forEach(listenToSingleRoom);
@@ -1399,7 +1341,6 @@
                     addMemberToRoom(currentRoomId, currentUserName, currentUserId);
                     listenForMessages();
                     listenForMemberList();
-                    // messageInput.focus(); // 將此行註解或刪除
                 }
             });
         }
@@ -1424,12 +1365,9 @@
                     localStorage.setItem(`lastReadMsg_${currentRoomId}`, lastMessageId);
                 }
             }
-            
             stopListeningForMessages();
             stopListeningForMemberList();
-            if (currentRoomId && currentUserName) {
-                removeMemberFromRoom(currentRoomId, currentUserName);
-            }
+            if (currentRoomId && currentUserName) { removeMemberFromRoom(currentRoomId, currentUserName); }
             currentRoomId = null;
             messagesRef = null;
             membersRef = null;
@@ -1437,20 +1375,11 @@
             loginScreen.style.display = 'flex';
             roomPasswordInput.value = '';
             errorMessage.textContent = '';
-  
             listenToAllSavedRoomsForNotifications();
-         
-            // --- 新增這兩行 ---
             userNameInput.blur();
             roomPasswordInput.blur();
-   
-            if (document.activeElement) {
-                document.activeElement.blur();
-            }
+            if (document.activeElement) { document.activeElement.blur(); }
         }
-        
-        // [MODIFIED] Startup logic is simplified.
-       // --- 應用程式啟動邏輯 ---
         async function startChatApp() {
             passwordOverlay.style.display = 'none';
             mainContainer.style.display = 'flex';
@@ -1463,9 +1392,7 @@
             renderRoomList();
             requestNotificationPermission();
             listenToAllSavedRoomsForNotifications();
-            // userNameInput.focus(); // 將此行註解或刪除
         }
-
         function verifyPassword() {
             const enteredPassword = sitePasswordInput.value.trim();
             if (!enteredPassword) {
@@ -1501,9 +1428,36 @@
             } else {
                 passwordOverlay.style.display = 'flex';
                 mainContainer.style.display = 'none';
-              // sitePasswordInput.focus(); // 將此行註解或刪除
             }
         }
+
+        // --- NEW: 主執行函數 ---
+        async function main() {
+            try {
+                // 步驟 1: 從後端 API 獲取 Firebase 設定
+                const response = await fetch('/api/firebase-config');
+                if (!response.ok) {
+                    throw new Error(`無法獲取設定: ${response.statusText}`);
+                }
+                const firebaseConfig = await response.json();
+
+                // 步驟 2: 使用獲取到的設定初始化 Firebase
+                firebase.initializeApp(firebaseConfig);
+                database = firebase.database(); // 初始化全域的 database 變數
+
+                // 步驟 3: 執行原有的應用程式啟動邏輯
+                initializeApp();
+
+            } catch (error) {
+                console.error("應用程式初始化失敗:", error);
+                // 向使用者顯示一個明確的錯誤訊息
+                document.body.innerHTML = `<div style="text-align: center; padding: 40px; font-family: sans-serif;">
+                    <h1>應用程式載入失敗</h1>
+                    <p>無法連接到伺服器以獲取必要的設定資訊，請稍後再試。</p>
+                </div>`;
+            }
+        }
+
         // --- 事件監聽 ---
         enterChatButton.addEventListener('click', handleLoginAttempt);
         roomPasswordInput.addEventListener('keyup', (event) => { if (event.key === 'Enter') handleLoginAttempt(); });
@@ -1514,27 +1468,14 @@
         memberInfoButton.addEventListener('click', openMemberModal);
         closeModalBtn.addEventListener('click', closeMemberModal);
         window.addEventListener('click', (event) => {
-            if (event.target === memberModal) {
-                closeMemberModal();
-            }
-            if (event.target === profileModal) {
-                closeProfileModal();
-            }
+            if (event.target === memberModal) closeMemberModal();
+            if (event.target === profileModal) closeProfileModal();
         });
-
-        userProfileButton.addEventListener('click', () => {
-            openProfileModal(true);
-        });
+        userProfileButton.addEventListener('click', () => { openProfileModal(true); });
         saveProfileBtn.addEventListener('click', saveProfile);
         closeProfileBtns.forEach(btn => btn.addEventListener('click', closeProfileModal));
-
         sitePasswordSubmit.addEventListener('click', verifyPassword);
-        sitePasswordInput.addEventListener('keyup', (event) => {
-            if (event.key === 'Enter') {
-                verifyPassword();
-            }
-        });
-
+        sitePasswordInput.addEventListener('keyup', (event) => { if (event.key === 'Enter') verifyPassword(); });
         window.addEventListener('beforeunload', () => {
             if (currentRoomId && chatMessages.lastElementChild) {
                 const lastMessageElementId = chatMessages.lastElementChild.id;
@@ -1546,7 +1487,8 @@
         });
         
         // --- 初始化 ---
-        document.addEventListener('DOMContentLoaded', initializeApp);
+        // 當 DOM 載入完成後，執行新的主函數
+        document.addEventListener('DOMContentLoaded', main);
     </script>
 </body>
 </html>
