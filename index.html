@@ -323,6 +323,7 @@
             position: sticky; 
             top: 0; 
             z-index: 10; 
+            min-height: 60px; 
         }
         .header-left {
             display: flex;
@@ -641,19 +642,9 @@
         }
 
         @media (max-width: 600px) {
-            body { 
-                padding: 0; 
-                overflow-y: hidden; /* 修訂：防止body滾動 */
-            }
-            .container { 
-                height: 100vh; 
-                max-height: 100vh; 
-                border-radius: 0; 
-                border: none; 
-            }
-            #login-screen { 
-                padding: 20px; 
-            }
+            body { padding: 0; }
+            .container { height: 100vh; max-height: 100vh; border-radius: 0; border: none; }
+            #login-screen { padding: 20px; }
             .modal-content,
             .profile-modal-content {
                 width: 95%;
@@ -663,9 +654,7 @@
                 padding: 25px;
             }
             .chat-header {
-                padding: 15px; /* 修訂：調整padding */
-                /* 修訂：為iPhone瀏海等裝置增加頂部安全距離 */
-                padding-top: calc(15px + env(safe-area-inset-top)); 
+                padding: 10px 15px;
             }
             .header-left, .header-right {
                 gap: 8px;
@@ -1154,57 +1143,67 @@
             memberModal.style.display = "none";
         }
 
-        // --- 修訂：個人資料功能 ---
+        // --- 修訂：個人資料功能（群組獨立）---
+        function loadProfileFromStorage(roomId, userId) {
+            const allRoomProfiles = JSON.parse(localStorage.getItem('penpal-room-profiles') || '{}');
+            // 如果該群組的資料存在，且該用戶的資料也存在，則返回
+            if (allRoomProfiles[roomId] && allRoomProfiles[roomId][userId]) {
+                return allRoomProfiles[roomId][userId];
+            }
+            // 否則返回預設值
+            return { intro: '', book: '' };
+        }
+
+        function saveProfileToStorage(roomId, userId, intro, book) {
+            // 獲取所有群組的個人資料
+            const allRoomProfiles = JSON.parse(localStorage.getItem('penpal-room-profiles') || '{}');
+            // 如果該群組的資料不存在，則初始化為一個空物件
+            if (!allRoomProfiles[roomId]) {
+                allRoomProfiles[roomId] = {};
+            }
+            // 更新特定群組下特定用戶的資料
+            allRoomProfiles[roomId][userId] = { intro, book };
+            // 儲存回去
+            localStorage.setItem('penpal-room-profiles', JSON.stringify(allRoomProfiles));
+        }
+
         function openProfileModal(isEditing = false, userId = null, userName = null) {
             profileModalTitle.textContent = isEditing ? '編輯個人資料' : `「${userName || '未知用戶'}」的個人資料`;
-            const targetUserId = isEditing ? currentUserId : userId;
-
+            
             if (isEditing) {
                 profileNameInput.value = currentUserName;
+                // 從當前群組讀取自己的個人資料
+                const savedProfile = loadProfileFromStorage(currentRoomId, currentUserId);
+                profileIntroInput.value = savedProfile.intro;
+                profileBookInput.value = savedProfile.book;
                 profileIntroInput.readOnly = false;
                 profileBookInput.readOnly = false;
                 profileForm.classList.remove('profile-viewer');
                 saveProfileBtn.style.display = 'block';
             } else {
                 profileNameInput.value = userName || '未知用戶';
+                // 從當前群組讀取他人的個人資料
+                const savedProfile = loadProfileFromStorage(currentRoomId, userId);
+                profileIntroInput.value = savedProfile.intro || '此用戶尚未設定自我介紹。';
+                profileBookInput.value = savedProfile.book || '此用戶尚未設定正在閱讀的書籍。';
                 profileIntroInput.readOnly = true;
                 profileBookInput.readOnly = true;
                 profileForm.classList.add('profile-viewer');
                 saveProfileBtn.style.display = 'none';
             }
-
-            // 從 Firebase 獲取資料
-            database.ref('userProfiles/' + targetUserId).once('value').then(snapshot => {
-                const profile = snapshot.val();
-                if (isEditing) {
-                    profileIntroInput.value = profile ? profile.intro : '';
-                    profileBookInput.value = profile ? profile.book : '';
-                } else {
-                    profileIntroInput.value = (profile && profile.intro) ? profile.intro : '此用戶尚未設定自我介紹。';
-                    profileBookInput.value = (profile && profile.book) ? profile.book : '此用戶尚未設定正在閱讀的書籍。';
-                }
-            });
-
             profileModal.style.display = "block";
         }
 
         function closeProfileModal() {
             profileModal.style.display = "none";
         }
-        
+
         function saveProfile() {
             const intro = profileIntroInput.value.trim();
             const book = profileBookInput.value.trim();
-            // 將個人資料儲存到 Firebase
-            database.ref('userProfiles/' + currentUserId).set({
-                intro: intro,
-                book: book
-            }).then(() => {
-                closeProfileModal();
-            }).catch(error => {
-                console.error("儲存個人資料失敗:", error);
-                alert("無法儲存個人資料，請稍後再試。");
-            });
+            // 儲存個人資料到當前的群組
+            saveProfileToStorage(currentRoomId, currentUserId, intro, book);
+            closeProfileModal();
         }
 
         function viewOtherUserProfile(userId, userName) {
