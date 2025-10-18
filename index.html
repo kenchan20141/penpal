@@ -1705,7 +1705,7 @@
             });
         }
         
-      // 為配對成功的使用者建立群組
+        // 為配對成功的使用者建立群組
         function createGroupForMatchedUsers(users) {
             const newRoomRef = database.ref('chatrooms').push();
             const newRoomId = newRoomRef.key;
@@ -1715,12 +1715,12 @@
             const userRoomUpdates = {};
             users.forEach(([userId, userName]) => {
                 members[userName] = userId;
-                // 構建通知路徑，這是關鍵
-                userRoomUpdates[`/userRooms/${userId}/${newRoomId}`] = newRoomName;
+                userRoomUpdates[`/userRooms/${userId}/${newRoomId}`] = newRoomName; // 通知所有成員
             });
 
             const newRoomData = {
                 members: members,
+                // 可以添加創建時間等元數據
                 createdAt: firebase.database.ServerValue.TIMESTAMP
             };
             
@@ -1729,55 +1729,13 @@
             updates[`/chatrooms/${newRoomId}`] = newRoomData;
             Object.assign(updates, userRoomUpdates);
 
-            // 【增加日誌】輸出我們即將要寫入的數據，方便調試
-            console.log("準備執行多路徑更新:", JSON.stringify(updates, null, 2));
-
             database.ref().update(updates)
                 .then(() => {
                     console.log(`成功為 ${users.length} 位使用者建立群組 ${newRoomId}`);
                 })
                 .catch(err => {
-                    // 【增加日誌】如果更新失敗，我們就能在這裡看到錯誤
-                    console.error("建立群組並發送通知的多路徑更新失敗:", err);
-                    alert("建立群組失敗，請檢查安全規則或網絡連線。");
+                    console.error("建立群組失敗:", err);
                 });
-        }
-
-        // 監聽是否有新群組邀請
-        function listenForMyNewRooms() {
-            if (!currentUserId) {
-                console.error("listenForMyNewRooms: currentUserId 不存在，無法附加監聽器。");
-                return;
-            }
-            const userRoomsRef = database.ref('userRooms/' + currentUserId);
-            
-            // 【增加日誌】確認監聽器已在正確的路徑上啟動
-            console.log(`正在監聽新群組，路徑: ${userRoomsRef.toString()}`);
-            
-            userRoomsRef.on('child_added', (snapshot) => {
-                const roomId = snapshot.key;
-                const roomName = snapshot.val();
-                
-                // 【增加日誌】確認收到了新群組的通知
-                console.log(`收到新群組通知！ID: ${roomId}, 名稱: ${roomName}`);
-
-                // 確保我們有一個有效的用戶名來添加到本地房間列表
-                const userNameForRoom = userNameInput.value.trim() || currentUserName || "我";
-
-                // 停止當前的配對狀態（如果有的話）
-                if (matchingState.isMatching) {
-                    stopMatching();
-                }
-
-                // 將新房間加入本地列表並更新UI
-                addOrUpdateRoom(roomId, roomName, userNameForRoom);
-
-                // 顯示通知
-                alert(`您已成功配對！新群組「${roomName}」已加入您的列表。`);
-
-                // 移除通知，避免重複觸發 (例如重新整理頁面)
-                snapshot.ref.remove().catch(err => console.error("移除通知失敗:", err));
-            });
         }
 
         // 監聽是否有新群組邀請
