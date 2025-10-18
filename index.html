@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
     <title>創作社——以文會友</title>
     <!-- 添加到主畫面設定 -->
@@ -25,17 +25,17 @@
     <style>
         /* --- 全局與侘寂風設計 (新色調) --- */
         :root {
-            --background-color: #f4f4f5;
+            --background-color: #f4f4f5; /* 更柔和的灰白背景 */
             --text-color: #333;
-            --primary-color: #607D8B;
-            --primary-color-hover: #546E7A;
-            --border-color: #e0e0e0;
+            --primary-color: #607D8B; /* 低調的灰藍色 */
+            --primary-color-hover: #546E7A; /* 按鈕懸停色 */
+            --border-color: #e0e0e0; /* 更淺的邊框 */
             --input-bg-color: #fff;
-            --message-bg-color: #eceff1;
+            --message-bg-color: #eceff1; /* 訊息氣泡背景 */
             --font-family: 'Noto Serif TC', 'cwTeXHei', 'cwTeXFangSong', 'cwTeXKai', 'cwTeXMing', 'PingFang TC', 'Microsoft JhengHei', serif;
             --danger-color: #c95c58;
             --danger-color-hover: #b04b47;
-            --subtle-text-color: #777;
+            --subtle-text-color: #777; /* 用於預覽文字 */
         }
         * {
             box-sizing: border-box;
@@ -53,10 +53,12 @@
             background-position: center center;
             background-repeat: no-repeat;
             background-attachment: fixed;
-            overflow: hidden;
         }
         body {
-            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 15px;
         }
         /* --- (新增) 密碼驗證畫面 --- */
         #password-overlay {
@@ -128,8 +130,8 @@
         .container {
             width: 100%;
             max-width: 800px;
-            height: 100vh;
-            max-height: 100vh;
+            height: 95vh;
+            max-height: 900px;
             background-color: var(--input-bg-color);
             border: 1px solid var(--border-color);
             border-radius: 8px;
@@ -137,7 +139,6 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            margin: 0 auto;
         }
         /* --- 登入畫面 --- */
         #login-screen {
@@ -639,8 +640,10 @@
             color: #fff;
             box-shadow: 0 2px 8px rgba(96, 125, 139, 0.2);
         }
+
         @media (max-width: 600px) {
-            .container { border-radius: 0; border: none; }
+            body { padding: 0; }
+            .container { height: 100vh; max-height: 100vh; border-radius: 0; border: none; }
             #login-screen { padding: 20px; }
             .modal-content,
             .profile-modal-content {
@@ -816,6 +819,7 @@
         const closeModalBtn = document.querySelector('.close');
         const memberListElement = document.getElementById('member-list');
         const memberCountElement = document.getElementById('member-count');
+
         // --- 個人資料相關 DOM 元素 ---
         const profileModal = document.getElementById('profileModal');
         const profileModalTitle = document.getElementById('profile-modal-title');
@@ -825,17 +829,16 @@
         const profileBookInput = document.getElementById('profile-book');
         const saveProfileBtn = document.getElementById('save-profile-btn');
         const closeProfileBtns = document.querySelectorAll('.close-profile');
+
         // --- 全局狀態 ---
         let currentRoomId = null;
         let currentUserName = null;
         let currentUserId = null;
         let messagesRef = null;
         let membersRef = null;
-        let profilesRef = null;
         let savedRooms = [];
         let globalListeners = {};
         let memberListeners = {};
-        let profileListeners = {};
         let isEditingRoomName = false;
         let originalRoomName = '';
         const USER_COLORS = ['#e57373', '#ba68c8', '#7986cb', '#4fc3f7', '#4db6ac', '#aed581', '#ffb74d', '#ff8a65', '#90a4ae', '#a1887f'];
@@ -844,6 +847,7 @@
             for (let i = 0; i < userId.length; i++) hash = userId.charCodeAt(i) + ((hash << 5) - hash);
             return USER_COLORS[Math.abs(hash % USER_COLORS.length)];
         }
+        
         // --- 群組清單管理 ---
         function saveRoomsToStorage() {
             const roomsToSave = savedRooms.map(({ id, name, userName }) => ({ id, name, userName }));
@@ -900,15 +904,13 @@
                 deleteBtn.title = '從列表中移除';
                 deleteBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    if (confirm(`確定要從列表中移除「${room.name}」嗎？
-此操作亦會將您從該群組成員名單中移除。`)) {
+                    if (confirm(`確定要從列表中移除「${room.name}」嗎？\n此操作亦會將您從該群組成員名單中移除。`)) {
                         const userNameToRemove = localStorage.getItem('penpal-userName');
                         if (userNameToRemove) {
                             removeMemberFromRoom(room.id, userNameToRemove);
                         }
                         detachSingleGlobalListener(room.id);
                         detachSingleMemberListener(room.id);
-                        detachSingleProfileListener(room.id);
                         savedRooms = savedRooms.filter(r => r.id !== room.id);
                         saveRoomsToStorage();
                         renderRoomList();
@@ -948,8 +950,10 @@
             listenToSingleRoom(existingRoom);
             updateAndRenderRoomList();
         }
+        
         const editIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" /></svg>`;
         const saveIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>`;
+
         function handleRoomNameKeydown(event) {
             if (event.key === 'Enter') {
                 event.preventDefault();
@@ -959,6 +963,7 @@
                 chatHeaderName.blur();
             }
         }
+
         function toggleRoomNameEdit() {
             if (isEditingRoomName) {
                 const newName = chatHeaderName.textContent.trim();
@@ -966,6 +971,7 @@
                 chatHeaderName.contentEditable = false;
                 editRoomNameButton.innerHTML = editIconSVG;
                 editRoomNameButton.title = '修訂群組名稱';
+                
                 if (newName && newName !== originalRoomName) {
                     addOrUpdateRoom(currentRoomId, newName, currentUserName);
                     chatHeaderName.textContent = newName;
@@ -973,6 +979,7 @@
                     chatHeaderName.textContent = originalRoomName;
                 }
                 isEditingRoomName = false;
+
             } else {
                 isEditingRoomName = true;
                 originalRoomName = chatHeaderName.textContent;
@@ -981,6 +988,7 @@
                 document.execCommand('selectAll', false, null);
                 editRoomNameButton.innerHTML = saveIconSVG;
                 editRoomNameButton.title = '儲存名稱';
+                
                 chatHeaderName.addEventListener('keydown', handleRoomNameKeydown);
                 chatHeaderName.addEventListener('blur', () => {
                     if (!isEditingRoomName) {
@@ -990,6 +998,7 @@
                 }, { once: true });
             }
         }
+
         function getUserId() {
             let userId = localStorage.getItem('penpal-userId');
             if (!userId) {
@@ -1014,6 +1023,7 @@
                     viewOtherUserProfile(userId, name);
                 }
             });
+
             const messageElement = document.createElement('div');
             messageElement.classList.add('message');
             const textNode = document.createElement('span');
@@ -1132,62 +1142,37 @@
         function closeMemberModal() {
             memberModal.style.display = "none";
         }
-        // --- 修訂：個人資料功能（同步至 Firebase）---
+
+        // --- 修訂：個人資料功能（群組獨立）---
         function loadProfileFromStorage(roomId, userId) {
             const allRoomProfiles = JSON.parse(localStorage.getItem('penpal-room-profiles') || '{}');
+            // 如果該群組的資料存在，且該用戶的資料也存在，則返回
             if (allRoomProfiles[roomId] && allRoomProfiles[roomId][userId]) {
                 return allRoomProfiles[roomId][userId];
             }
+            // 否則返回預設值
             return { intro: '', book: '' };
         }
+
         function saveProfileToStorage(roomId, userId, intro, book) {
+            // 獲取所有群組的個人資料
             const allRoomProfiles = JSON.parse(localStorage.getItem('penpal-room-profiles') || '{}');
+            // 如果該群組的資料不存在，則初始化為一個空物件
             if (!allRoomProfiles[roomId]) {
                 allRoomProfiles[roomId] = {};
             }
+            // 更新特定群組下特定用戶的資料
             allRoomProfiles[roomId][userId] = { intro, book };
+            // 儲存回去
             localStorage.setItem('penpal-room-profiles', JSON.stringify(allRoomProfiles));
         }
-        function loadProfileFromFirebase(roomId, userId) {
-            return database.ref(`profiles/${roomId}/${userId}`).once('value').then(snapshot => {
-                const data = snapshot.val();
-                if (data) {
-                    saveProfileToStorage(roomId, userId, data.intro || '', data.book || '');
-                    return data;
-                } else {
-                    return { intro: '', book: '' };
-                }
-            });
-        }
-        function saveProfileToFirebase(roomId, userId, intro, book) {
-            const profileRef = database.ref(`profiles/${roomId}/${userId}`);
-            return profileRef.set({ intro, book, timestamp: firebase.database.ServerValue.TIMESTAMP });
-        }
-        function listenToProfileChanges(roomId, userId, callback) {
-            if (profileListeners[roomId] && profileListeners[roomId][userId]) {
-                return;
-            }
-            const profileRef = database.ref(`profiles/${roomId}/${userId}`);
-            const listener = profileRef.on('value', snapshot => {
-                const data = snapshot.val() || { intro: '', book: '' };
-                saveProfileToStorage(roomId, userId, data.intro, data.book);
-                if (callback) callback(data);
-            });
-            if (!profileListeners[roomId]) profileListeners[roomId] = {};
-            profileListeners[roomId][userId] = { ref: profileRef, listener };
-        }
-        function detachSingleProfileListener(roomId) {
-            if (profileListeners[roomId]) {
-                Object.values(profileListeners[roomId]).forEach(({ ref, listener }) => {
-                    ref.off('value', listener);
-                });
-                delete profileListeners[roomId];
-            }
-        }
+
         function openProfileModal(isEditing = false, userId = null, userName = null) {
             profileModalTitle.textContent = isEditing ? '編輯個人資料' : `「${userName || '未知用戶'}」的個人資料`;
+            
             if (isEditing) {
                 profileNameInput.value = currentUserName;
+                // 從當前群組讀取自己的個人資料
                 const savedProfile = loadProfileFromStorage(currentRoomId, currentUserId);
                 profileIntroInput.value = savedProfile.intro;
                 profileBookInput.value = savedProfile.book;
@@ -1197,17 +1182,10 @@
                 saveProfileBtn.style.display = 'block';
             } else {
                 profileNameInput.value = userName || '未知用戶';
-                // 從 Firebase 讀取他人資料（若本地沒有）
+                // 從當前群組讀取他人的個人資料
                 const savedProfile = loadProfileFromStorage(currentRoomId, userId);
-                if (savedProfile.intro !== '' || savedProfile.book !== '') {
-                    profileIntroInput.value = savedProfile.intro || '此用戶尚未設定自我介紹。';
-                    profileBookInput.value = savedProfile.book || '此用戶尚未設定正在閱讀的書籍。';
-                } else {
-                    loadProfileFromFirebase(currentRoomId, userId).then(data => {
-                        profileIntroInput.value = data.intro || '此用戶尚未設定自我介紹。';
-                        profileBookInput.value = data.book || '此用戶尚未設定正在閱讀的書籍。';
-                    });
-                }
+                profileIntroInput.value = savedProfile.intro || '此用戶尚未設定自我介紹。';
+                profileBookInput.value = savedProfile.book || '此用戶尚未設定正在閱讀的書籍。';
                 profileIntroInput.readOnly = true;
                 profileBookInput.readOnly = true;
                 profileForm.classList.add('profile-viewer');
@@ -1215,25 +1193,24 @@
             }
             profileModal.style.display = "block";
         }
+
         function closeProfileModal() {
             profileModal.style.display = "none";
         }
+
         function saveProfile() {
             const intro = profileIntroInput.value.trim();
             const book = profileBookInput.value.trim();
+            // 儲存個人資料到當前的群組
             saveProfileToStorage(currentRoomId, currentUserId, intro, book);
-            saveProfileToFirebase(currentRoomId, currentUserId, intro, book).then(() => {
-                closeProfileModal();
-            }).catch(error => {
-                console.error("儲存個人資料失敗:", error);
-                alert("無法儲存個人資料，請檢查網絡連線。");
-            });
+            closeProfileModal();
         }
+
         function viewOtherUserProfile(userId, userName) {
             if (userId === currentUserId) return;
-            listenToProfileChanges(currentRoomId, userId);
             openProfileModal(false, userId, userName);
         }
+
         function requestNotificationPermission() {
             if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
                 Notification.requestPermission().then(permission => {
@@ -1283,9 +1260,6 @@
         function detachAllMemberListeners() {
             Object.keys(memberListeners).forEach(detachSingleMemberListener);
         }
-        function detachAllProfileListeners() {
-            Object.keys(profileListeners).forEach(detachSingleProfileListener);
-        }
         function listenToSingleRoom(room) {
             detachSingleGlobalListener(room.id);
             const now = Date.now();
@@ -1328,11 +1302,12 @@
                     currentRoomId = password;
                     messagesRef = database.ref('chatrooms/' + currentRoomId);
                     membersRef = database.ref('chatrooms/' + currentRoomId + '/members');
-                    profilesRef = database.ref(`profiles/${currentRoomId}`);
                     localStorage.setItem('penpal-userName', userName);
                     const roomInfo = savedRooms.find(r => r.id === currentRoomId);
                     const roomName = roomInfo ? roomInfo.name : currentRoomId;
+                    
                     addOrUpdateRoom(currentRoomId, roomName, currentUserName);
+                    
                     chatHeaderName.textContent = roomName;
                     loginScreen.style.display = 'none';
                     chatScreen.style.display = 'flex';
@@ -1360,14 +1335,12 @@
         function logout() {
             stopListeningForMessages();
             stopListeningForMemberList();
-            detachAllProfileListeners();
             if (currentRoomId && currentUserName) {
                 removeMemberFromRoom(currentRoomId, currentUserName);
             }
             currentRoomId = null;
             messagesRef = null;
             membersRef = null;
-            profilesRef = null;
             chatScreen.style.display = 'none';
             loginScreen.style.display = 'flex';
             roomPasswordInput.value = '';
@@ -1446,12 +1419,14 @@
                 closeProfileModal();
             }
         });
+
         // 個人資料事件監聽
         userProfileButton.addEventListener('click', () => {
             openProfileModal(true);
         });
         saveProfileBtn.addEventListener('click', saveProfile);
         closeProfileBtns.forEach(btn => btn.addEventListener('click', closeProfileModal));
+
         // 密碼驗證畫面的事件監聽
         sitePasswordSubmit.addEventListener('click', verifyPassword);
         sitePasswordInput.addEventListener('keyup', (event) => {
