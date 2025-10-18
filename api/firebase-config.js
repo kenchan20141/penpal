@@ -1,3 +1,4 @@
+
 // /api/firebase-config.js
 
 // 這個函數將在伺服器上執行
