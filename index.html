@@ -139,6 +139,7 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            position: relative; /* 新增，為配對按鈕定位 */
         }
         /* --- 登入畫面 --- */
         #login-screen {
@@ -306,6 +307,79 @@
             height: 20px;
             font-size: 14px;
         }
+        /* --- [新增] 隨機配對功能樣式 --- */
+        #matching-controls-container {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            z-index: 100;
+        }
+        #toggle-matching-panel-btn {
+            background: none;
+            border: 1px solid transparent;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            cursor: pointer;
+            padding: 6px;
+            color: var(--subtle-text-color);
+            transition: background-color 0.2s, color 0.2s;
+        }
+        #toggle-matching-panel-btn:hover {
+            background-color: #e0e0e0;
+            color: var(--text-color);
+        }
+        #matching-panel {
+            display: none;
+            position: absolute;
+            top: 45px;
+            right: 0;
+            background-color: var(--input-bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            padding: 10px;
+            width: 160px;
+        }
+        .matching-option {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            font-size: 14px;
+        }
+        .matching-btn {
+            width: 40px;
+            height: 20px;
+            background-color: #e0e0e0;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            cursor: pointer;
+            position: relative;
+            transition: background-color 0.3s;
+        }
+        .matching-btn .light {
+            position: absolute;
+            top: 50%;
+            left: 4px;
+            transform: translateY(-50%);
+            width: 14px;
+            height: 14px;
+            background-color: #fff;
+            border-radius: 50%;
+            box-shadow: 0 0 2px rgba(0,0,0,0.3);
+            transition: all 0.3s ease-in-out;
+        }
+        .matching-btn.active {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color-hover);
+        }
+        .matching-btn.active .light {
+            left: 20px;
+            background-color: #f4f4f5;
+            box-shadow: 0 0 5px #fff, 0 0 10px #fff;
+        }
+
         /* --- 聊天室畫面 --- */
         #chat-screen {
             display: none;
@@ -675,6 +749,10 @@
                 padding-top: env(safe-area-inset-top); /* 尊重頂部安全區域（瀏海） */
             }
             #login-screen { padding: 20px; }
+            #matching-controls-container {
+                top: calc(env(safe-area-inset-top) + 10px);
+                right: 15px;
+            }
             .modal-content,
             .profile-modal-content {
                 width: 95%;
@@ -684,7 +762,7 @@
                 padding: 25px;
             }
             .chat-header {
-                padding: 15px 15px 10px 15px; /* 增加頂部內邊距 */
+                padding: 15px 15px 10px 15px;
             }
             .header-left, .header-right {
                 gap: 8px;
@@ -729,6 +807,28 @@
             </div>
             <button id="enter-chat-button" class="btn">進入</button>
             <p id="error-message"></p>
+        </div>
+        <!-- [新增] 配對功能介面 -->
+        <div id="matching-controls-container">
+            <button id="toggle-matching-panel-btn" title="隨機配對">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="24" height="24">
+                  <path d="M5 4a1 1 0 00-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4zM11 4a1 1 0 10-2 0v1.268a2 2 0 000 3.464V16a1 1 0 102 0V8.732a2 2 0 000-3.464V4zM16 3a1 1 0 011 1v7.268a2 2 0 000 3.464V16a1 1 0 11-2 0v-1.268a2 2 0 000-3.464V4a1 1 0 011-1z" />
+                </svg>
+            </button>
+            <div id="matching-panel">
+                <div class="matching-option">
+                    <span>二人群組</span>
+                    <button class="matching-btn" data-size="2" title="點擊開始或取消二人配對">
+                        <div class="light"></div>
+                    </button>
+                </div>
+                <div class="matching-option">
+                    <span>三人群組</span>
+                    <button class="matching-btn" data-size="3" title="點擊開始或取消三人配對">
+                        <div class="light"></div>
+                    </button>
+                </div>
+            </div>
         </div>
         <!-- 聊天室畫面 -->
         <div id="chat-screen">
@@ -852,6 +952,11 @@
         const profileBookInput = document.getElementById('profile-book');
         const saveProfileBtn = document.getElementById('save-profile-btn');
         const closeProfileBtns = document.querySelectorAll('.close-profile');
+        // --- [新增] 配對功能 DOM 元素 ---
+        const toggleMatchingPanelBtn = document.getElementById('toggle-matching-panel-btn');
+        const matchingPanel = document.getElementById('matching-panel');
+        const matchingBtns = document.querySelectorAll('.matching-btn');
+
         // --- 全局狀態 ---
         let currentRoomId = null;
         let currentUserName = null;
@@ -885,6 +990,9 @@
                 roomList.innerHTML = '<li id="no-rooms-message">尚未儲存任何群組</li>';
                 return;
             }
+            // 根據最後一則訊息的時間戳排序
+            savedRooms.sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0));
+
             savedRooms.forEach(room => {
                 const li = document.createElement('li');
                 li.setAttribute('data-room-id', room.id);
@@ -948,7 +1056,7 @@
                 existingRoom.name = roomName;
                 existingRoom.userName = userName;
             } else {
-                existingRoom = { id: roomId, name: roomName, userName: userName };
+                existingRoom = { id: roomId, name: roomName, userName: userName, lastMessageTimestamp: Date.now() };
                 savedRooms.push(existingRoom);
             }
             saveRoomsToStorage();
@@ -1173,7 +1281,18 @@
         function openProfileModal(isEditing = false, targetUserId = null, targetUserName = null) {
             const userId = isEditing ? currentUserId : targetUserId;
             const userName = isEditing ? currentUserName : targetUserName;
-            profileModalTitle.textContent = isEditing ? '編輯個人資料' : `「${userName || '未知用戶'}」的個人資料`;
+            
+            // 當在新配對的群組中首次點擊時，強制要求編輯
+            const roomInfo = savedRooms.find(r => r.id === currentRoomId);
+            const isNewlyMatchedRoom = roomInfo && roomInfo.name.startsWith('配對群組');
+            const hasProfile = localStorage.getItem(`profile_set_for_${currentRoomId}`);
+
+            if (isEditing && isNewlyMatchedRoom && !hasProfile) {
+                profileModalTitle.textContent = '請先編輯個人資料';
+            } else {
+                profileModalTitle.textContent = isEditing ? '編輯個人資料' : `「${userName || '未知用戶'}」的個人資料`;
+            }
+
             profileNameInput.value = userName || '未知用戶';
             profileIntroInput.value = '讀取中...';
             profileBookInput.value = '讀取中...';
@@ -1214,7 +1333,10 @@
             }
             const profileRef = database.ref(`chatrooms/${currentRoomId}/profiles/${currentUserId}`);
             profileRef.set({ intro: intro, book: book })
-                .then(() => { closeProfileModal(); })
+                .then(() => { 
+                    localStorage.setItem(`profile_set_for_${currentRoomId}`, 'true');
+                    closeProfileModal(); 
+                })
                 .catch(error => {
                     console.error("儲存個人資料時發生錯誤:", error);
                     alert('儲存失敗，請檢查網絡連線或權限設定。');
@@ -1282,15 +1404,19 @@
                 const roomToUpdate = savedRooms.find(r => r.id === room.id);
                 if (roomToUpdate) {
                     if (message) {
-                        if (roomToUpdate.lastMessageText !== message.text || roomToUpdate.lastMessageSender !== message.name) {
+                        const hasChanged = roomToUpdate.lastMessageText !== message.text || roomToUpdate.lastMessageSender !== message.name;
+                        if (hasChanged) {
                             roomToUpdate.lastMessageText = message.text;
                             roomToUpdate.lastMessageSender = message.name;
+                            roomToUpdate.lastMessageTimestamp = message.timestamp;
+                            saveRoomsToStorage();
                             renderRoomList();
                         }
                     } else {
                         if (roomToUpdate.lastMessageText !== null) {
                             roomToUpdate.lastMessageText = null;
                             roomToUpdate.lastMessageSender = null;
+                            saveRoomsToStorage();
                             renderRoomList();
                         }
                     }
@@ -1341,6 +1467,13 @@
                     addMemberToRoom(currentRoomId, currentUserName, currentUserId);
                     listenForMessages();
                     listenForMemberList();
+
+                    // 檢查是否為新配對群組且尚未設定個人資料
+                    const isNewlyMatchedRoom = roomName.startsWith('配對群組');
+                    const hasProfile = localStorage.getItem(`profile_set_for_${currentRoomId}`);
+                    if (isNewlyMatchedRoom && !hasProfile) {
+                        setTimeout(() => openProfileModal(true), 500);
+                    }
                 }
             });
         }
@@ -1380,6 +1513,160 @@
             roomPasswordInput.blur();
             if (document.activeElement) { document.activeElement.blur(); }
         }
+        
+        // --- [新增] 配對功能邏輯 ---
+        function initializeMatchingControls() {
+            toggleMatchingPanelBtn.addEventListener('click', () => {
+                matchingPanel.style.display = matchingPanel.style.display === 'block' ? 'none' : 'block';
+            });
+
+            matchingBtns.forEach(btn => {
+                btn.addEventListener('click', handleMatchingToggle);
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!matchingPanel.contains(e.target) && !toggleMatchingPanelBtn.contains(e.target)) {
+                    matchingPanel.style.display = 'none';
+                }
+            });
+        }
+
+        function handleMatchingToggle(event) {
+            const button = event.currentTarget;
+            const groupSize = parseInt(button.dataset.size, 10);
+            
+            const userName = userNameInput.value.trim();
+            if (!userName) {
+                alert('請先在「您的稱呼」欄位中輸入名稱才能進行配對。');
+                return;
+            }
+            currentUserName = userName; // 確保 currentUserName 是最新的
+            localStorage.setItem('penpal-userName', userName);
+
+
+            const isActive = button.classList.toggle('active');
+            updateMatchingQueue(groupSize, isActive);
+        }
+
+        function updateMatchingQueue(groupSize, isJoining) {
+            const queueName = groupSize === 2 ? 'twoPerson' : 'threePerson';
+            const userQueueRef = database.ref(`matchingQueue/${queueName}/${currentUserId}`);
+
+            if (isJoining) {
+                const userData = {
+                    userName: currentUserName,
+                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                };
+                userQueueRef.set(userData).then(() => {
+                    localStorage.setItem(`matching-status-${groupSize}`, 'true');
+                    checkForMatch(groupSize);
+                });
+            } else {
+                userQueueRef.remove().then(() => {
+                    localStorage.removeItem(`matching-status-${groupSize}`);
+                });
+            }
+        }
+
+        function checkForMatch(groupSize) {
+            const queueName = groupSize === 2 ? 'twoPerson' : 'threePerson';
+            const queueRef = database.ref(`matchingQueue/${queueName}`);
+
+            queueRef.transaction(currentQueue => {
+                if (!currentQueue) return currentQueue;
+
+                const userIds = Object.keys(currentQueue);
+                if (userIds.length >= groupSize) {
+                    console.log(`找到足夠的使用者進行 ${groupSize} 人配對。`);
+                    for (let i = 0; i < groupSize; i++) {
+                        delete currentQueue[userIds[i]];
+                    }
+                    return currentQueue;
+                }
+                return; // Abort transaction
+            }, (error, committed, snapshot) => {
+                if (error) {
+                    console.error("配對交易失敗: ", error);
+                } else if (committed) {
+                    const initialQueue = snapshot.val();
+                    const userIds = Object.keys(initialQueue);
+                    
+                    const matchedUsers = {};
+                    const matchedUserIds = [];
+                    for (let i = 0; i < groupSize; i++) {
+                        const userId = userIds[i];
+                        matchedUsers[userId] = initialQueue[userId];
+                        matchedUserIds.push(userId);
+                    }
+
+                    if (matchedUserIds.includes(currentUserId)) {
+                        console.log("我成功配對了！", matchedUsers);
+                        if (userIds[0] === currentUserId) {
+                            createGroupForMatchedUsers(matchedUsers, groupSize);
+                        }
+                        localStorage.removeItem(`matching-status-${groupSize}`);
+                        const matchBtn = document.querySelector(`.matching-btn[data-size='${groupSize}']`);
+                        if (matchBtn) matchBtn.classList.remove('active');
+                    }
+                }
+            });
+        }
+
+        function createGroupForMatchedUsers(users, groupSize) {
+            const newRoomRef = database.ref('chatrooms').push();
+            const newRoomId = newRoomRef.key;
+            
+            const members = {};
+            const userUpdates = {};
+            const userIds = Object.keys(users);
+
+            userIds.forEach(userId => {
+                const userName = users[userId].userName;
+                members[userName] = userId;
+                userUpdates[`/userRooms/${userId}/${newRoomId}`] = true;
+            });
+
+            const newRoomData = { members: members };
+            const updates = {};
+            updates[`/chatrooms/${newRoomId}`] = newRoomData;
+            Object.assign(updates, userUpdates);
+
+            database.ref().update(updates)
+                .then(() => console.log(`成功建立群組 ${newRoomId} 給使用者:`, userIds))
+                .catch(error => console.error("建立群組失敗:", error));
+        }
+
+        function listenForNewRooms() {
+            if (!currentUserId) return;
+            const userRoomsRef = database.ref('userRooms/' + currentUserId);
+            
+            userRoomsRef.off('child_added');
+            userRoomsRef.on('child_added', snapshot => {
+                const newRoomId = snapshot.key;
+                if (!newRoomId) return;
+
+                const isAlreadySaved = savedRooms.some(room => room.id === newRoomId);
+                if (!isAlreadySaved) {
+                    console.log(`偵測到我被加入新群組: ${newRoomId}`);
+                    const initialRoomName = `配對群組-${newRoomId.slice(-4)}`;
+                    addOrUpdateRoom(newRoomId, initialRoomName, currentUserName);
+                    alert(`你已成功配對並加入新群組：${initialRoomName}`);
+                }
+            });
+        }
+
+        function restoreMatchingState() {
+            matchingBtns.forEach(btn => {
+                const groupSize = btn.dataset.size;
+                if (localStorage.getItem(`matching-status-${groupSize}`) === 'true') {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        // --- 應用程式啟動與初始化 ---
         async function startChatApp() {
             passwordOverlay.style.display = 'none';
             mainContainer.style.display = 'flex';
@@ -1387,11 +1674,16 @@
             const storedUserName = localStorage.getItem('penpal-userName');
             if (storedUserName) {
                 userNameInput.value = storedUserName;
+                currentUserName = storedUserName;
             }
             loadRoomsFromStorage();
             renderRoomList();
             requestNotificationPermission();
             listenToAllSavedRoomsForNotifications();
+            // [新增] 初始化配對功能
+            initializeMatchingControls();
+            restoreMatchingState();
+            listenForNewRooms();
         }
         function verifyPassword() {
             const enteredPassword = sitePasswordInput.value.trim();
@@ -1431,7 +1723,7 @@
             }
         }
 
-        // --- NEW: 主執行函數 ---
+        // --- 主執行函數 ---
         async function main() {
             try {
                 // 步驟 1: 從後端 API 獲取 Firebase 設定
@@ -1450,7 +1742,6 @@
 
             } catch (error) {
                 console.error("應用程式初始化失敗:", error);
-                // 向使用者顯示一個明確的錯誤訊息
                 document.body.innerHTML = `<div style="text-align: center; padding: 40px; font-family: sans-serif;">
                     <h1>應用程式載入失敗</h1>
                     <p>無法連接到伺服器以獲取必要的設定資訊，請稍後再試。</p>
@@ -1487,7 +1778,6 @@
         });
         
         // --- 初始化 ---
-        // 當 DOM 載入完成後，執行新的主函數
         document.addEventListener('DOMContentLoaded', main);
     </script>
 </body>
