@@ -955,7 +955,8 @@
         }
         async function updateAndRenderRoomList() {
             const fetchPromises = savedRooms.map(room => {
-                return database.ref('chatrooms/' + room.id).orderByKey().limitToLast(1).once('value').then(snapshot => {
+                // [MODIFIED] 改為使用 orderByChild('timestamp') 以確保基於伺服器時間戳可靠地獲取最後一則訊息，解決裝置間的顯示不一致問題。
+                return database.ref('chatrooms/' + room.id).orderByChild('timestamp').limitToLast(1).once('value').then(snapshot => {
                     if (snapshot.exists()) {
                         const [messageId] = Object.keys(snapshot.val());
                         const message = snapshot.val()[messageId];
@@ -965,6 +966,10 @@
                         room.lastMessageText = null;
                         room.lastMessageSender = null;
                     }
+                }).catch(error => {
+                    console.error(`為群組 ${room.id} 讀取最後訊息時發生錯誤:`, error);
+                    room.lastMessageText = null;
+                    room.lastMessageSender = null;
                 });
             });
             await Promise.all(fetchPromises);
